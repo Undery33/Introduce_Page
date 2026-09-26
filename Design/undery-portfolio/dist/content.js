@@ -1,0 +1,30 @@
+/* 이름, 소개, 사진 제목과 실제 SNS 주소를 이 파일에서 수정하세요. */
+window.SITE_CONTENT = {
+  photos: [
+    { title: 'A sky of our own', description: '구름 위에서 남긴 한 장', src: 'assets/photos/sky-portrait.png', position: '50% 30%', avatarPosition: '52% 28%', width: 4320, height: 7680 },
+    { title: 'A classroom in bloom', description: '물과 빛으로 채워진 교실', src: 'assets/photos/classroom-water.png', position: '50% 50%', avatarPosition: '55% 45%', width: 7680, height: 4320 },
+    { title: 'Under the stars', description: '별빛 아래 흐르는 선율', src: 'assets/photos/star-piano.png', position: '50% 55%', avatarPosition: '43% 64%', width: 7680, height: 4320 },
+    { title: 'A quiet winter', description: '눈 내린 거리를 걷는 밤', src: 'assets/photos/snow-street.png', position: '65% 50%', avatarPosition: '67% 48%', width: 7680, height: 4320 },
+    { title: 'Between the lights', description: '골목 사이로 번지는 불빛', src: 'assets/photos/industrial-alley.png', position: '40% 50%', avatarPosition: '40% 40%', width: 7680, height: 4320 },
+    { title: 'Nocturne', description: '푸른 밤의 피아노', src: 'assets/photos/piano-night.png', position: '60% 45%', avatarPosition: '67% 32%', width: 7680, height: 4320 }
+  ],
+  // 실제 개인 프로필 / 그룹 / 초대 주소를 넣으면 카드가 해당 주소로 연결됩니다.
+  // 예: url: 'https://discord.gg/실제초대코드'
+  socials: [
+    { name: 'VRChat Group', icon: 'vrchat', photo: 1, url: '' },
+    { name: 'Discord', icon: 'discord', photo: 4, url: '' },
+    { name: 'X / Twitter', icon: 'x', photo: 2, url: '' }
+  ],
+  friends: [
+    { name: '유저 01', photo: 0 }, { name: '유저 02', photo: 1 },
+    { name: '유저 03', photo: 2 }, { name: '유저 04', photo: 3 },
+    { name: '유저 05', photo: 4 }, { name: '유저 06', photo: 5 },
+    { name: '유저 07', photo: 2 }, { name: '유저 08', photo: 4 },
+    { name: '유저 09', photo: 0 }, { name: '유저 10', photo: 3 }
+  ],
+  games: [
+    { name: 'GAME 01', photo: 1, description: '햇빛과 물로 채워진 교실에서 촬영한 VRChat 원본 사진' },
+    { name: 'GAME 02', photo: 2, description: '별이 가득한 공간의 피아노를 촬영한 VRChat 원본 사진' },
+    { name: 'GAME 03', photo: 4, description: '불빛이 비치는 골목에서 촬영한 VRChat 원본 사진' }
+  ]
+};

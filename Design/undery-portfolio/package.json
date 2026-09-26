@@ -1,0 +1,7 @@
+{
+  "name": "undery-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Undery personal portfolio — HTML, CSS, JavaScript",
+  "scripts": { "start": "node server.mjs", "check": "node --check dist/app.js && node --check dist/content.js && node --check server.mjs" }
+}

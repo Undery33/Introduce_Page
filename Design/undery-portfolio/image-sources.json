@@ -1,0 +1,44 @@
+[
+  {
+    "file": "dist/assets/photos/snow-street.png",
+    "sourceFilename": "VRChat_snow_street_8K_technical_7680x4320.png",
+    "sourceConversation": "https://chatgpt.com/share/6ab7d371-e6a0-83ee-b0ae-c12580181f80",
+    "sha256": "372384F3FCE1C809C3D8FFB1E9F28614C4E92558157D551AECDD8DCA827CDC7F",
+    "unchanged": true
+  },
+  {
+    "file": "dist/assets/photos/industrial-alley.png",
+    "sourceFilename": "VRChat_industrial_alley_8K_technical_7680x4320.png",
+    "sourceConversation": "https://chatgpt.com/share/6ab7d371-e6a0-83ee-b0ae-c12580181f80",
+    "sha256": "433317D3027D7D85503929DAB09CA9D5E1674A5F51150B3636D145F3C3770CE6",
+    "unchanged": true
+  },
+  {
+    "file": "dist/assets/photos/star-piano.png",
+    "sourceFilename": "VRChat_star_piano_8K_technical_7680x4320.png",
+    "sourceConversation": "https://chatgpt.com/share/6ab7d371-e6a0-83ee-b0ae-c12580181f80",
+    "sha256": "77509F42FF1B90B5BBF03DDB6EAB8B1DE898D74D690871E5E371A9BDDCA75399",
+    "unchanged": true
+  },
+  {
+    "file": "dist/assets/photos/piano-night.png",
+    "sourceFilename": "VRChat_piano_night_8K_technical_7680x4320.png",
+    "sourceConversation": "https://chatgpt.com/share/6ab7d371-e6a0-83ee-b0ae-c12580181f80",
+    "sha256": "33E647DD5354EFE52F206885F22924B6B5022A260E6C8CC229BCA4ADFBBFF8AB",
+    "unchanged": true
+  },
+  {
+    "file": "dist/assets/photos/sky-portrait.png",
+    "sourceFilename": "VRChat_sky_portrait_8K_technical_4320x7680.png",
+    "sourceConversation": "https://chatgpt.com/share/6ab7d371-e6a0-83ee-b0ae-c12580181f80",
+    "sha256": "2CD60DC59B2A10AB5AA012430C847E1B6D234F505C5F9889F3EBF0B3975F9FB2",
+    "unchanged": true
+  },
+  {
+    "file": "dist/assets/photos/classroom-water.png",
+    "sourceFilename": "VRChat_classroom_water_8K_technical_7680x4320.png",
+    "sourceConversation": "https://chatgpt.com/share/6ab7d371-e6a0-83ee-b0ae-c12580181f80",
+    "sha256": "2C562F7E67B706B734F63EDC45A1624BFD553F3A0B73C0066FF8B45A82459CAD",
+    "unchanged": true
+  }
+]
