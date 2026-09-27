@@ -1,0 +1,10 @@
+.git
+.next
+node_modules
+.env*
+Document
+Design
+*.log
+*.tsbuildinfo
+backups
+data

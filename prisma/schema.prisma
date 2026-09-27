@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PublicationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CodingCategory {
+  INFRASTRUCTURE
+  WEB
+  NETWORK
+  PROGRAMMING
+}
+
+enum CommentStatus {
+  PUBLISHED
+  HIDDEN
+  DELETED
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum MediaStatus {
+  PENDING
+  VERIFIED
+  PUBLISHED
+  DELETED
+}
+
+model CodingPost {
+  id          String            @id @default(cuid())
+  slug        String            @unique
+  title       String
+  markdown    String
+  category    CodingCategory
+  tags        String[]          @default([])
+  status      PublicationStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status, publishedAt, id])
+  @@index([category, status])
+}
+
+// A revision is a complete snapshot. Publishing retires the old published
+// revision atomically; a partial unique index enforces a single public version.
+model ProfileRevision {
+  id           String            @id @default(cuid())
+  status       PublicationStatus @default(DRAFT)
+  displayName  String
+  tagline      String?
+  introduction String?
+  interests    String[]          @default([])
+  mbti         String?
+  mbtiPublic   Boolean           @default(false)
+  personality  String[]          @default([])
+  fields       ProfileField[]
+  skills       Skill[]
+  strengths    Strength[]
+  createdAt    DateTime          @default(now())
+  publishedAt  DateTime?
+  updatedAt    DateTime          @updatedAt
+
+  @@index([status])
+}
+
+model ProfileField {
+  id         String          @id @default(cuid())
+  revisionId String
+  revision   ProfileRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  label      String
+  value      String
+  isPublic   Boolean         @default(false)
+  position   Int             @default(0)
+
+  @@index([revisionId, isPublic, position])
+}
+
+model Skill {
+  id         String          @id @default(cuid())
+  revisionId String
+  revision   ProfileRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  title      String
+  category   String
+  tools      String[]        @default([])
+  task       String
+  level      String
+  evidence   String?
+  isPublic   Boolean         @default(false)
+  position   Int             @default(0)
+
+  @@index([revisionId, isPublic, position])
+}
+
+model Strength {
+  id          String          @id @default(cuid())
+  revisionId  String
+  revision    ProfileRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  example     String
+  evidence    String?
+  isPublic    Boolean         @default(false)
+  position    Int             @default(0)
+
+  @@index([revisionId, isPublic, position])
+}
+
+model WhoamiComment {
+  id               String        @id @default(cuid())
+  nickname         String?
+  body             String?
+  deletionCodeHash String?
+  status           CommentStatus @default(PUBLISHED)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
+
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
+}
+
+// Never include short-lived security identifiers in public comment records.
+model CommentSecurityEvent {
+  id            String   @id @default(cuid())
+  identifierHash String
+  action        String
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+
+  @@index([identifierHash, action, createdAt])
+  @@index([expiresAt])
+}
+
+// A tombstone survives removal of a comment's content and must be replayed
+// during restoration, so a backup cannot silently republish removed comments.
+model CommentModerationEvent {
+  id        String        @id @default(cuid())
+  commentId String
+  status    CommentStatus
+  createdAt DateTime      @default(now())
+
+  @@index([commentId, createdAt])
+}
+
+model MediaAsset {
+  id          String      @id @default(cuid())
+  objectKey   String      @unique
+  kind        MediaKind
+  status      MediaStatus @default(PENDING)
+  title       String
+  description String?
+  gameName    String?
+  mimeType    String
+  bytes       BigInt
+  width       Int?
+  height      Int?
+  duration    Float?
+  thumbnailKey String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([kind, status, createdAt])
+}
+
+model GameLink {
+  id        String   @id @default(cuid())
+  kind      String
+  label     String
+  value     String
+  isPublic  Boolean  @default(false)
+  position  Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model InstagramPost {
+  id        String   @id @default(cuid())
+  url       String   @unique
+  caption   String?
+  isPublic  Boolean  @default(false)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// Only the configured owner may be admitted by the future OAuth implementation.
+// No visitor account model or browser-supplied role exists.
+model AdminIdentity {
+  id           String   @id @default(cuid())
+  githubUserId String   @unique
+  createdAt    DateTime @default(now())
+}

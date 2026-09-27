@@ -1,0 +1,43 @@
+{
+  "name": "undery-site",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build --webpack && node scripts/prepare-standalone.mjs",
+    "start": "HOSTNAME=127.0.0.1 node .next/standalone/server.js",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "test:smoke": "node scripts/smoke.mjs",
+    "check": "npm run lint && npm run typecheck && npm test && npm run db:validate",
+    "db:validate": "node scripts/validate-schema.mjs",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "format": "prettier --write src tests scripts *.ts *.mjs package.json tsconfig.json compose.yaml docs",
+    "format:check": "prettier --check src tests scripts *.ts *.mjs package.json tsconfig.json compose.yaml docs"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "next": "16.3.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.6",
+    "prettier": "3.9.9",
+    "prisma": "6.19.3",
+    "tsx": "^4.0.0",
+    "typescript": "~5.9.3"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.0"
+  }
+}

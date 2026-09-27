@@ -1,0 +1,52 @@
+name: undery-site
+services:
+  app:
+    image: ${APP_IMAGE:?Set APP_IMAGE to a tested image digest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      SITE_URL: https://undery.link
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    cpus: 2
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Opt-in until persistence and authentication are implemented and tested.
+  db:
+    profiles: [database]
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: undery
+      POSTGRES_USER: undery
+      POSTGRES_PASSWORD_FILE: /run/secrets/database_password
+    secrets:
+      - database_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U undery -d undery"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 1g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+secrets:
+  database_password:
+    file: ${DATABASE_PASSWORD_FILE:-/etc/undery/database-password}
+volumes:
+  postgres_data:

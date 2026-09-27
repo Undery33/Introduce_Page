@@ -1,0 +1,79 @@
+# 첫 구현 기반
+
+요구사항 기준: `main`의 `5d233a5` (2026-09-26 개정 계획).
+작업 브랜치: `codex/foundation`.
+
+## 이번 구현
+
+- Next.js App Router + TypeScript의 단일 앱. Node 24 LTS, 잠금 파일, 독립 실행 빌드.
+- `/coding`, `/game`, `/game/highlights`, `/game/gallery`, `/whoami`의 반응형 시험 화면.
+- 영역별 로고·메뉴·푸터·404 이동·canonical·공유 이미지·사이트맵. 다른 내부 영역으로 이동하는 전역 메뉴 없음.
+- 루트, `/?from=profile`, `/index`, `/index.html`, `/develop`, `/blog`, 알 수 없는 주소의 실제 404.
+- 코딩 분류·검색 URL과 빈 결과 화면. 글 저장소 연결 전이므로 실제 글과 페이지 나누기는 아직 없음.
+- 자기소개 다섯 섹션. 상세 인적사항·MBTI·기술 숙련도·강점은 임의로 채우지 않음.
+- 댓글 입력은 비활성 상태. 로그인·작성·업로드 API는 아직 존재하지 않아 직접 호출도 거절됨.
+- PostgreSQL/Prisma 스키마와 최초 migration. 소개 revision, 비공개 기본값, 댓글 내용·보안정보·처리 이력 분리.
+- 공개 프로필 DTO와 댓글 입력 규칙에 대한 단위 검증. 아직 실제 DB/API에 연결된 기능은 아님.
+- 상태 API, Dockerfile, Compose, Nginx 설정안, Jenkins 검증 파이프라인.
+
+현재 화면은 실제 데이터 없이 동작하는 기반이다. 아직 계획의 3단계 전체 완료 또는 공개 가능한 제품으로 간주하지 않는다.
+
+## 실행
+
+```sh
+npm ci
+npm run dev
+# http://127.0.0.1:3000/coding
+# http://127.0.0.1:3000/game
+# http://127.0.0.1:3000/whoami
+```
+
+최상위 `/`의 404는 정상이다. DB와 외부 계정 없이 화면을 실행할 수 있다.
+
+```sh
+npm run check
+BUILD_COMMIT=$(git rev-parse HEAD) npm run build
+npm run test:smoke
+```
+
+`test:smoke`는 빌드한 앱을 127.0.0.1:3101에서 잠시 실행하고 검사 후 종료한다. `SMOKE_PORT`로 포트를 바꾸거나, 이미 실행 중인 앱에는 `SMOKE_BASE_URL`을 지정할 수 있다. `EXPECTED_COMMIT`은 배포 커밋 검사를 추가한다.
+
+DB 준비 후 `.env.example`을 참고해 별도의 비공개 환경 설정에 `DATABASE_URL`을 넣고 `npm run db:generate`, `npm run db:migrate`를 실행한다. 개발·운영 DB를 구분한다. 최초 migration은 빈 DB에서 검증하고 실제 운영 데이터가 있으면 사전 백업과 검토를 진행한다. 이번 작업은 운영 DB에 적용하지 않는다.
+
+## 구조와 데이터 경계
+
+| 위치                               | 역할                                    |
+| ---------------------------------- | --------------------------------------- |
+| `src/app/{coding,game,whoami}`     | 독립 영역 화면·메타데이터·사이트맵      |
+| `src/components/section-shell.tsx` | 영역별 레이아웃과 공통 디자인           |
+| `src/lib/sections.ts`              | 경로·메뉴·분류의 기준                   |
+| `src/lib/public-profile.ts`        | 공개 상태·필드 공개 여부를 적용하는 DTO |
+| `src/lib/comment-input.ts`         | 클라이언트/서버 공용 입력 규칙          |
+| `prisma/`                          | 데이터 모델·변경 이력                   |
+| `scripts/smoke.mjs`                | 실제 프로덕션 서버 HTTP 회귀 검사       |
+| `deploy/nginx/`                    | HTTPS·www·HTTP 경로 정책 설정안         |
+
+소개는 완전한 revision 단위로 저장한다. 공개 변경은 트랜잭션에서 기존 공개본을 보관 상태로 옮긴 뒤 새 revision을 공개해야 한다. DB의 부분 유일 인덱스로 공개 revision을 1개로 제한한다. 인적사항·MBTI·역량·강점은 최초 비공개이며 공개 DTO에 허용한 필드만 반환한다.
+
+댓글 삭제 시 본문·닉네임·삭제코드 해시를 지우고 처리 이력만 별도로 남기는 DB 제약을 둔다. 실제 삭제코드 발급, 해시 검증, 제출·삭제 빈도 제한, 중복 방지, 보관 만료 작업과 복원 이력 재적용은 댓글 구현 단계에서 추가해야 한다. 입력 유효성 검증은 출력 이스케이프와 권한 검사를 대신하지 않는다.
+
+## 단계 현황과 다음 완료 조건
+
+| 계획 단계              | 상태 | 남은 조건                                                                                     |
+| ---------------------- | ---- | --------------------------------------------------------------------------------------------- |
+| 1. 요구사항·경로 확정  | 완료 | 최신 계획을 경로·화면·검증 목록으로 옮김                                                      |
+| 2. 사전 점검·설계      | 진행 | 데이터 초안·서버 여유 확인. 외부망 접속, SSH 복구, SNS 실제 계정·표시 조건 추가 확인          |
+| 3. 기반·최소 자동 배포 | 진행 | 로컬 앱 검증 후 GitHub OAuth, Jenkins 실제 실행, GHCR, AWS 시험, 운영 적용·재부팅·메모리 검증 |
+| 4–9                    | 대기 | 이전 단계 완료 증거 확보 후 진행                                                              |
+
+다음 작업은 **관리자 인증 + DB 연결**이다. 검증된 인증 라이브러리와 GitHub OAuth를 연결하고 사용자 숫자 ID만 허용한다. 직접 관리자 API 호출, 다른 계정, 세션 만료, CSRF, 로그아웃, `/admin` 복귀를 검사한다. OAuth 비밀값은 GitHub에 기록하지 않는다.
+
+그 뒤 Jenkins 검증 작업을 연결하고 별도의 제한된 배포 agent에서 이미지 digest 발행·검증·백업·migration·교체·복구를 구현한다. 현재 Jenkinsfile은 CI까지이며 자동 배포 완료를 의미하지 않는다. 저장소나 Jenkins 관리자 설정도 이번 작업에서는 변경하지 않는다.
+
+## 시각 자료와 패키지
+
+기존 `feature/web`의 `74af846` 디자인 시안에서 아이보리 바탕과 글꼴 방향을 참고했다. 시안의 샘플 소개·친구 이름·사진 콘텐츠를 자동으로 공개 데이터로 옮기지 않았다. Pretendard와 Anton 글꼴을 해당 브랜치에서 가져왔으며 라이선스는 `public/licenses/`에 있다. 화면은 로컬 글꼴만 요청한다.
+
+프레임워크 버전은 npm과 [Next.js 자체 호스팅 문서](https://nextjs.org/docs/app/guides/self-hosting)로 확인했다. Prisma CLI는 안정 버전 6.19.3을 사용한다. Prisma 설정의 전이 의존성 `deepmerge-ts`는 보안 수정 버전 8.0.0으로 고정하고 스키마 검증·client 생성·migration 생성으로 호환성을 확인한다. ESLint는 Next.js 제공 플러그인의 호환 범위인 9.39.5를 사용하며, 플러그인이 ESLint 10을 지원할 때 함께 갱신한다.
+
+실제 검증 결과는 `docs/VERIFICATION.md`에 기록한다.
