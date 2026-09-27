@@ -1,10 +1,12 @@
 # 실행·운영 전환 안내
 
+**계획 수정 2 적용 대기:** 이 문서의 목표 정책은 루트 접속 안내 200이다. 현재 앱·Nginx 설정안·검사는 이전 루트 404 구현 상태다. 사용자 시안을 바탕으로 [개정 반영 항목](PLAN-REVISION-2.md)을 구현하고 재검증하기 전에는 현재 설정안을 새 계획에 맞는 운영 버전으로 전환하지 않는다.
+
 ## 현재 운영과 개발 분리
 
 현재 `https://undery.link`는 Nginx의 준비 화면을 제공한다. 이번 기반 앱은 로컬에서 별도로 검증한다. 저장소의 Docker/Compose/Nginx/Jenkins 파일은 운영 준비물이며 설치 완료를 뜻하지 않는다.
 
-운영 전환 후 루트 주소는 계획대로 404가 된다. 접근 주소는 `/coding`, `/game`, `/whoami`다. 이는 장애가 아니라 의도된 경로 정책이다.
+새 계획의 운영 전환 후 `https://undery.link/`는 접속 안내와 HTTP 200을 제공한다. 방문자는 Coding·Game·Whoami의 역할을 보고 목적지를 선택한다. `/coding`, `/game`, `/whoami` 직접 접속도 유지한다.
 
 ## 앱과 컨테이너
 
@@ -24,7 +26,7 @@ PostgreSQL 볼륨은 앱 이미지와 분리한다. `docker compose down -v`, �
 
 1. 기존 Nginx 사이트 파일, 활성 링크, 실제 인증서 경로를 확인하고 설정 사본을 운영 백업 위치에 보관한다.
 2. 새 앱을 127.0.0.1:3000에서 실행하고 HTTP 검증을 통과한다.
-3. `deploy/nginx/undery.link.conf`를 현재 서비스 경로와 대조한다. 루트 차단은 HTTP·HTTPS·www 모두 적용한다.
+3. `deploy/nginx/undery.link.conf`를 새 앱과 함께 갱신한다. 대표 HTTPS 루트의 404를 앱 전달로 바꾸고 HTTP·www 루트는 경로·쿼리를 보존해 대표 HTTPS 주소로 정규화한다. 비지원 주소의 404는 유지한다.
 4. 관리자 권한으로 설정을 배치하고 `nginx -t`를 통과한 경우에만 reload한다. 실패하면 기존 설정을 유지한다.
 5. 외부 네트워크에서 각 영역, 정규화 주소, 루트·우회 주소의 실제 HTTP 상태를 확인한다.
 6. 문제 발생 시 백업한 Nginx 설정과 이전 앱 이미지로 복구한다. DB를 자동 과거 시점으로 되돌리지 않는다.
@@ -38,7 +40,7 @@ curl -I https://undery.link/coding
 curl -I https://undery.link/develop
 ```
 
-예상: 세 루트는 404. 정상 영역의 HTTP/www 요청은 경로·쿼리를 보존해 HTTPS apex로 308. 기존 `/develop`은 404. HTTPS canonical 영역은 200. 정상 영역 후행 슬래시는 해당 영역으로 정리된다.
+새 계획 적용 후 예상: HTTPS 대표 루트는 안내 화면 200. HTTP·www 루트는 HTTPS 대표 루트로 308. 정상 영역의 HTTP/www 요청도 경로·쿼리를 보존해 HTTPS apex로 308. 기존 `/develop`과 비지원 경로는 404. HTTPS canonical 영역은 200. 정상 영역 후행 슬래시는 해당 영역으로 정리된다. 현재 코드로는 이 새 기대값을 충족하지 못하므로 구현 후 재검증한다.
 
 ## CI/CD 후속 구현
 
