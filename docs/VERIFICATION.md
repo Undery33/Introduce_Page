@@ -1,5 +1,11 @@
 # 기반 구현 검증 기록
 
+## 2026-10-05 — feature/web 통합 검증
+
+- 오늘 구현 커밋 `5bf7794`에 기존 `feature/web`의 `74af846`을 병합했다. 기존 `Design/undery-portfolio` 원본 시안과 이력을 보존했으며 충돌은 없었다.
+- 통합 커밋 `3a30665`에서 `npm run check`, `npm run build`, `npm run test:smoke`를 다시 실행해 통과했다. 단위 검사 9개·HTTP 검사 53개가 통과했고 작업 트리와 공백 검사에 문제가 없었다.
+- 반영 대상은 사용자 지정 GitHub `feature/web` 브랜치다. Jenkins 설정 및 운영 서비스는 변경하지 않았다.
+
 ## 2026-10-05 — VRChat 타이틀 사진·VALORANT 배너
 
 - UNDERY 글자 내부 배경을 사용자 지정 노을 사진으로 바꿨다. 앞쪽 아바타와 여섯 장의 사진 목록은 유지했다. 새 사진과 배너 파일은 사용자 원본의 SHA-256 일치를 확인했다.
