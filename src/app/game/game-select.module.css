@@ -1,0 +1,418 @@
+.gameGate {
+  --game-ink: #242720;
+  --game-yellow: #f2c14e;
+  --game-paper: #f9f8f4;
+  --accent: var(--game-ink);
+  color: var(--game-ink);
+  background: var(--game-paper);
+  min-height: 100svh;
+}
+.gameGate ::selection {
+  background: var(--game-ink);
+  color: var(--game-yellow);
+}
+.stage {
+  position: relative;
+  isolation: isolate;
+  height: 100svh;
+  min-height: 740px;
+  overflow: hidden;
+}
+.choices {
+  --split-top: 56%;
+  --split-bottom: 44%;
+  position: absolute;
+  inset: 0;
+}
+.choice {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  color: var(--game-ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: clip-path 550ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.choiceContent {
+  position: absolute;
+  inset: 0;
+  transform-origin: var(--scene-origin) 50%;
+  transform: scale(var(--scene-scale, 1));
+  transition: transform 550ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.choice::after {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  pointer-events: none;
+  background: #11130f;
+  opacity: var(--scene-shade, 0);
+  transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.choice:hover {
+  color: var(--game-ink);
+}
+.valorant {
+  --scene-origin: 25%;
+  background: var(--game-paper);
+  clip-path: polygon(0 0, var(--split-top) 0, var(--split-bottom) 100%, 0 100%);
+}
+.vrchat {
+  --scene-origin: 75%;
+  background: var(--game-yellow);
+  clip-path: polygon(
+    var(--split-top) 0,
+    100% 0,
+    100% 100%,
+    var(--split-bottom) 100%
+  );
+}
+.discordPosition {
+  position: absolute;
+  z-index: 7;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.discordButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 164px;
+  min-height: 48px;
+  padding: 12px 22px;
+  border: 1px solid var(--game-ink);
+  background: var(--game-ink);
+  color: var(--game-paper);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 1.3px;
+}
+.discordButton:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.discordButton svg {
+  width: 22px;
+  height: 18px;
+  fill: currentColor;
+}
+.gameBrand {
+  position: absolute;
+  z-index: 2;
+  top: 108px;
+  display: flex;
+  justify-content: center;
+  width: 260px;
+}
+.valorantBrand {
+  left: 32%;
+  transform: translateX(-50%);
+}
+.vrchatBrand {
+  right: 31%;
+  transform: translateX(50%);
+}
+.valorantLogo {
+  width: 216px;
+  height: 128px;
+  object-fit: contain;
+}
+.vrchatLogo {
+  width: 254px;
+  height: 127px;
+  object-fit: contain;
+}
+.portrait {
+  position: absolute;
+  pointer-events: none;
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.character {
+  object-fit: contain;
+  object-position: bottom;
+}
+.jett {
+  z-index: 3;
+  left: -21%;
+  bottom: -18%;
+  width: 80%;
+  height: 110%;
+  transform-origin: 30% 80%;
+}
+.avatar {
+  z-index: 3;
+  right: -2%;
+  bottom: -9%;
+  width: 40%;
+  height: 108%;
+  transform-origin: 70% 80%;
+}
+.selectionCard {
+  position: absolute;
+  z-index: 4;
+  bottom: 54px;
+  width: clamp(290px, 25vw, 380px);
+  padding: 24px 27px 19px;
+  border: 1px solid var(--game-ink);
+  box-shadow: 6px 6px 0 rgb(36 39 32 / 10%);
+  transition:
+    transform 300ms ease,
+    box-shadow 300ms ease;
+}
+.valorantCard {
+  left: 5%;
+  background: var(--game-yellow);
+}
+.vrchatCard {
+  right: 5%;
+  background: var(--game-paper);
+}
+.selectionCard h2 {
+  font-family: Anton, Impact, sans-serif;
+  font-size: 37px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+  line-height: 1.25;
+}
+.cardAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgb(36 39 32 / 25%);
+  font-size: 12px;
+  font-weight: 700;
+}
+.actionArrow {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--game-ink);
+  border-radius: 50%;
+  transition:
+    color 200ms ease,
+    background 200ms ease,
+    transform 250ms ease;
+}
+.actionArrow svg {
+  width: 14px;
+  height: 14px;
+}
+.choice:focus-visible {
+  outline: none;
+}
+.choice:focus-visible .selectionCard {
+  outline: 3px solid var(--game-ink);
+  outline-offset: 6px;
+  transform: translateY(-6px);
+}
+.choice:focus-visible .actionArrow {
+  background: var(--game-ink);
+  color: var(--game-yellow);
+}
+@media (hover: hover) and (pointer: fine) {
+  .choices:has(.choice:hover) .choice {
+    --scene-scale: 0.975;
+    --scene-shade: 0.22;
+  }
+  .choices:has(.choice:hover) .choice:hover {
+    --scene-scale: 1.025;
+    --scene-shade: 0;
+  }
+  .choice:hover .selectionCard {
+    transform: translateY(-7px);
+    box-shadow: 9px 12px 0 rgb(36 39 32 / 13%);
+  }
+  .choice:hover .actionArrow {
+    color: var(--game-yellow);
+    background: var(--game-ink);
+    transform: rotate(5deg);
+  }
+}
+@media (min-width: 761px) and (hover: hover) and (pointer: fine) {
+  .choices:has(.valorant:hover) {
+    --split-top: 60%;
+    --split-bottom: 48%;
+  }
+  .choices:has(.vrchat:hover) {
+    --split-top: 52%;
+    --split-bottom: 40%;
+  }
+}
+@media (min-width: 1700px) {
+  .gameBrand {
+    top: 120px;
+  }
+  .valorantBrand {
+    left: 34%;
+  }
+  .valorantLogo {
+    width: 270px;
+    height: 155px;
+  }
+  .vrchatLogo {
+    width: 300px;
+    height: 150px;
+  }
+  .selectionCard {
+    padding: 28px 31px 23px;
+    bottom: 70px;
+  }
+  .selectionCard h2 {
+    font-size: 45px;
+  }
+  .jett {
+    left: -24%;
+    height: 120%;
+    bottom: -23%;
+  }
+  .avatar {
+    right: 0;
+    bottom: -12%;
+    height: 117%;
+  }
+}
+@media (min-width: 761px) and (max-width: 1100px) {
+  .gameBrand {
+    width: 200px;
+    top: 100px;
+  }
+  .valorantBrand {
+    left: 24%;
+  }
+  .vrchatBrand {
+    right: 23%;
+  }
+  .valorantLogo {
+    width: 190px;
+    height: 115px;
+  }
+  .vrchatLogo {
+    width: 205px;
+    height: 115px;
+  }
+  .jett {
+    width: 112%;
+    left: -34%;
+    height: calc(100% - 170px);
+    bottom: -11%;
+  }
+  .avatar {
+    width: 54%;
+    right: -8%;
+    height: 88%;
+    bottom: -13%;
+  }
+  .selectionCard {
+    width: 34%;
+    padding: 21px;
+    bottom: 96px;
+  }
+}
+@media (min-width: 761px) and (max-width: 1100px) and (max-aspect-ratio: 4/5) {
+  .avatar {
+    bottom: -2%;
+  }
+}
+@media (max-width: 760px) {
+  .stage {
+    min-height: 0;
+    height: auto;
+    background: var(--game-yellow);
+  }
+  .choices {
+    position: relative;
+  }
+  .choice {
+    position: relative;
+    height: 660px;
+    clip-path: none;
+  }
+  .choiceContent {
+    transform-origin: 50% 50%;
+  }
+  .discordPosition {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    display: flex;
+    justify-content: center;
+    padding: 22px 24px 24px;
+    transform: none;
+  }
+  .gameBrand {
+    top: 24px;
+    width: 200px;
+  }
+  .valorantBrand {
+    left: 34%;
+  }
+  .vrchatBrand {
+    right: 65%;
+  }
+  .valorantLogo {
+    width: 160px;
+    height: 110px;
+  }
+  .vrchatLogo {
+    width: 185px;
+    height: 110px;
+  }
+  .jett {
+    width: 150%;
+    left: -9%;
+    bottom: 85px;
+    height: 80%;
+  }
+  .avatar {
+    width: 88%;
+    right: -12%;
+    bottom: 59px;
+    height: 83%;
+  }
+  .selectionCard {
+    bottom: 26px;
+    width: calc(100% - 48px);
+    padding: 20px 22px 15px;
+  }
+  .valorantCard {
+    left: 24px;
+  }
+  .vrchatCard {
+    right: 24px;
+  }
+  .selectionCard h2 {
+    font-size: 32px;
+  }
+  .cardAction {
+    margin-top: 13px;
+    padding-top: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .choice,
+  .choice::after,
+  .choiceContent,
+  .portrait,
+  .selectionCard,
+  .actionArrow {
+    transition: none;
+  }
+  .choices:has(.choice:hover) {
+    --split-top: 56%;
+    --split-bottom: 44%;
+  }
+  .choiceContent {
+    transform: none;
+  }
+  .choice:hover .portrait,
+  .choice:hover .selectionCard,
+  .choice:hover .actionArrow {
+    transform: none;
+  }
+}

@@ -1,0 +1,11 @@
+.logo {
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+.dark {
+  filter: brightness(0);
+}
+.light {
+  filter: none;
+}

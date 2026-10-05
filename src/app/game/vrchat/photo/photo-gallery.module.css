@@ -1,0 +1,233 @@
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("/fonts/CormorantGaramond-Variable.ttf") format("truetype");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.page {
+  min-height: 100svh;
+  padding: clamp(16px, 2vw, 32px) 0 clamp(72px, 10vw, 160px);
+  background: #fbfaf5
+    linear-gradient(180deg, #f2c14e 0%, #f2c14e 32%, #fbfaf5 100%) top / 100%
+    max(100svh, 920px) no-repeat;
+  color: #26251f;
+  font-family: "Pretendard", "Malgun Gothic", sans-serif;
+}
+
+.backRow {
+  display: flex;
+  margin: 0 2.5% 20px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 15px;
+  color: inherit;
+  font-size: 13px;
+}
+
+.backLink:hover {
+  color: inherit;
+}
+
+.backLink svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.title {
+  margin: 0 2.5%;
+  color: #fff;
+  font-family: "Anton", Impact, sans-serif;
+  font-size: clamp(72px, 25vw, 390px);
+  font-weight: 400;
+  line-height: 0.85;
+  letter-spacing: -0.027em;
+}
+
+.title svg {
+  display: block;
+  width: 100%;
+  height: 0.85em;
+  overflow: visible;
+  fill: currentColor;
+  pointer-events: none;
+}
+
+.gallery {
+  width: 86%;
+  max-width: 1440px;
+  margin: clamp(100px, 10vw, 160px) auto 0;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #fff;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.divider::after {
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px 32px;
+  margin: 30px 0 26px;
+}
+
+.monthFilter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.monthFilter label {
+  white-space: nowrap;
+}
+
+.selectWrap {
+  position: relative;
+}
+
+.selectWrap select {
+  min-width: 160px;
+  min-height: 44px;
+  padding: 10px 38px 10px 15px;
+  border: 1px solid rgb(38 37 31 / 28%);
+  border-radius: 0;
+  appearance: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.selectWrap svg {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tags button {
+  min-height: 44px;
+  padding: 10px 17px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 13px;
+  font-weight: 400;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.tags button[aria-pressed="true"] {
+  border-color: #26251f;
+  background: #26251f;
+  color: #fff;
+}
+
+.tags button:hover:not([aria-pressed="true"]) {
+  border-color: rgb(38 37 31 / 40%);
+}
+
+.selectWrap select:focus-visible,
+.tags button:focus-visible,
+.backLink:focus-visible {
+  outline: 2px solid #26251f;
+  outline-offset: 4px;
+}
+
+.results {
+  min-height: 280px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(8px, 1.6vw, 26px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photo {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: rgb(255 255 255 / 25%);
+}
+
+.photo img {
+  object-fit: cover;
+}
+
+.empty {
+  padding: 90px 16px;
+  text-align: center;
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .page {
+    background-size: 100% max(100svh, 630px);
+  }
+
+  .filters {
+    gap: 12px;
+    margin-top: 24px;
+    margin-bottom: 20px;
+  }
+
+  .tags {
+    width: 100%;
+    gap: 2px;
+  }
+
+  .tags button {
+    padding: 10px 9px;
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tags button {
+    transition: none;
+  }
+}

@@ -1,4 +1,4 @@
-import { SectionNotFound } from "@/components/section-shell";
+import { ComingSoon } from "@/components/coming-soon";
 export default function NotFound() {
-  return <SectionNotFound section="coding" />;
+  return <ComingSoon />;
 }

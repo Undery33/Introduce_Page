@@ -12,15 +12,21 @@ export const sections = {
   },
   game: {
     name: "Game",
-    eyebrow: "PLAY & COLLECT",
+    eyebrow: "VALORANT & VRCHAT",
     path: "/game",
-    description: "함께 플레이하고, 오래 기억할 순간을 모읍니다.",
+    description: "발로란트 하이라이트와 VRChat에서 함께한 이야기를 모읍니다.",
     navigation: [
-      { label: "게임 홈", href: "/game" },
-      { label: "하이라이트", href: "/game/highlights" },
-      { label: "사진첩", href: "/game/gallery" },
+      { label: "게임 선택", href: "/game" },
+      { label: "VALORANT", href: "/game/highlights" },
+      { label: "VRChat", href: "/game/vrchat" },
     ],
-    sitemap: ["/game", "/game/highlights", "/game/gallery"],
+    sitemap: [
+      "/game",
+      "/game/highlights",
+      "/game/valorant",
+      "/game/vrchat",
+      "/game/vrchat/photo",
+    ],
   },
   whoami: {
     name: "Whoami",

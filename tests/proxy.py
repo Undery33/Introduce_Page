@@ -44,20 +44,23 @@ with tempfile.TemporaryDirectory(prefix="undery-proxy-test-") as directory:
     context = ssl.create_default_context(cafile=str(temp / "cert.pem"))
     count = 0
 
-    def check(path, status, host, secure, location=None):
+    def check(path, status, host, secure, location=None, method="GET"):
         global count
         if secure:
             connection = http.client.HTTPSConnection("127.0.0.1", https_port, context=context, timeout=5)
         else:
             connection = http.client.HTTPConnection("127.0.0.1", http_port, timeout=5)
         try:
-            connection.request("GET", path, headers={"Host": host})
+            connection.request(method, path, headers={"Host": host})
             response = connection.getresponse()
             assert response.status == status, (host, secure, path, response.status, status)
             if location:
                 assert response.getheader("Location") == location
-            response.read()
+            else:
+                assert response.getheader("Location") is None
+            body = response.read().decode()
             count += 1
+            return body
         finally:
             connection.close()
 
@@ -72,14 +75,24 @@ with tempfile.TemporaryDirectory(prefix="undery-proxy-test-") as directory:
                 time.sleep(0.1)
         for host in ("undery.link", "www.undery.link"):
             for secure in (False, True):
-                for path in ("/", "/?from=profile", "/index", "/index.html", "/develop", "/blog", "/unknown"):
+                canonical = secure and host == "undery.link"
+                for path in ("/", "/?from=profile"):
+                    if canonical:
+                        body = check(path, 200, host, secure)
+                        for section in ("whoami", "game", "coding"):
+                            assert re.search(r'<a\b[^>]*href="/' + section + '"', body)
+                        check(path, 200, host, secure, method="HEAD")
+                    else:
+                        check(path, 308, host, secure, "https://undery.link" + path)
+                        check(path, 308, host, secure, "https://undery.link" + path, method="HEAD")
+                for path in ("/index", "/index.html", "/develop", "/develop/example", "/blog", "/blog/daily", "/unknown"):
                     check(path, 404, host, secure)
-                for path in ("/coding", "/game", "/whoami", "/game/highlights", "/game/gallery", "/privacy"):
-                    if secure and host == "undery.link":
+                for path in ("/coding", "/game", "/whoami", "/game/highlights", "/game/gallery", "/privacy", "/sitemap.xml"):
+                    if canonical:
                         check(path, 200, host, secure)
                     else:
                         check(path + "?source=test", 308, host, secure, "https://undery.link" + path + "?source=test")
-        print(f"PASS: {count} Nginx checks; HTTP/HTTPS, apex/www, root 404, query-preserving redirects.")
+        print(f"PASS: {count} Nginx checks; HTTP/HTTPS, apex/www, root selection page, unsupported-route 404s, query-preserving redirects.")
     finally:
         nginx.terminate()
         try:

@@ -142,14 +142,16 @@ a:hover {
 }
 .brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   font-size: 27px;
   font-weight: 850;
   letter-spacing: -1.5px;
   white-space: nowrap;
 }
-.brand-dot {
-  color: var(--accent);
+.footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 .brand-section {
   margin-left: 17px;

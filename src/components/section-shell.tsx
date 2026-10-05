@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 import { sections, type Section } from "@/lib/sections";
 
 export function SectionShell({
@@ -20,7 +21,7 @@ export function SectionShell({
           href={data.path}
           aria-label={`${data.name} 시작 페이지`}
         >
-          UNDERY<span className="brand-dot">.</span>
+          <BrandLogo alt="" />
           <span className="brand-section">{data.name}</span>
         </Link>
         <nav aria-label={`${data.name} 메뉴`}>
@@ -36,7 +37,14 @@ export function SectionShell({
       </main>
       <footer className="site-footer">
         <div>
-          <Link href={data.path}>UNDERY / {data.name.toUpperCase()}</Link>
+          <Link
+            href={data.path}
+            className="footer-brand"
+            aria-label={`UNDERY / ${data.name.toUpperCase()} 시작 페이지`}
+          >
+            <BrandLogo size={28} alt="" />
+            <span>UNDERY / {data.name.toUpperCase()}</span>
+          </Link>
           <p>하나씩, 나의 속도로 쌓아가는 공간.</p>
         </div>
         <div className="footer-links">

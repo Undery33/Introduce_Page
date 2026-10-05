@@ -5,6 +5,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin),
   title: "UNDERY",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+  },
   robots: { index: false, follow: false },
 };
 export default function RootLayout({
