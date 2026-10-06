@@ -43,7 +43,11 @@ export type CodingPost = {
   isExample?: boolean;
 };
 
-type CodingFilters = { category?: CodingCategory; query?: string };
+type CodingFilters = {
+  category?: CodingCategory;
+  query?: string;
+  tag?: string;
+};
 
 function firstValue(value?: string | string[]): string {
   return (Array.isArray(value) ? value[0] : value) ?? "";
@@ -62,25 +66,6 @@ export function normalizeCodingQuery(value?: string | string[]): string {
     .trim();
 }
 
-export function isCodingPreviewEnabled(
-  environment: { NODE_ENV?: string; CODING_PREVIEW?: string } = process.env,
-): boolean {
-  return (
-    environment.NODE_ENV === "development" && environment.CODING_PREVIEW === "1"
-  );
-}
-
-export async function getCodingPosts(): Promise<readonly CodingPost[]> {
-  if (isCodingPreviewEnabled()) {
-    const { codingExamplePosts } = await import("./coding-examples");
-    return codingExamplePosts;
-  }
-
-  // Replace only this empty public-post adapter with an explicit DTO query when
-  // the DB is ready. Development examples must never be a DB fallback or seed.
-  return [];
-}
-
 function updatedTimestamp(post: CodingPost): number {
   const timestamp = Date.parse(post.updatedAt);
   return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp;
@@ -88,14 +73,35 @@ function updatedTimestamp(post: CodingPost): number {
 
 export function filterCodingPosts(
   posts: readonly CodingPost[],
-  { category, query }: CodingFilters = {},
+  { category, query, tag }: CodingFilters = {},
 ): CodingPost[] {
   const normalizedQuery = normalizeCodingQuery(query).toLowerCase();
+  const normalizedTag = normalizeCodingQuery(tag).toLowerCase();
+  const matchWordPrefix = /^[a-z]$/.test(normalizedQuery);
 
   return posts
     .filter((post) => {
       if (category && post.category !== category) return false;
+      if (
+        normalizedTag &&
+        !post.tags.some(
+          (value) =>
+            normalizeCodingQuery(value).toLowerCase() === normalizedTag,
+        )
+      ) {
+        return false;
+      }
       if (!normalizedQuery) return true;
+
+      if (matchWordPrefix) {
+        return [post.title, post.description, ...post.tags].some((value) =>
+          value
+            .normalize("NFC")
+            .toLowerCase()
+            .split(/[^\p{L}\p{N}]+/u)
+            .some((word) => word.startsWith(normalizedQuery)),
+        );
+      }
 
       const searchableText = [
         post.title,
@@ -123,13 +129,16 @@ export function filterCodingPosts(
 export function codingListHref({
   category,
   query,
+  tag,
 }: CodingFilters = {}): string {
   const params = new URLSearchParams();
   const selectedCategory = getCodingCategory(category);
   const normalizedQuery = normalizeCodingQuery(query);
+  const normalizedTag = normalizeCodingQuery(tag);
 
   if (selectedCategory) params.set("category", selectedCategory.id);
   if (normalizedQuery) params.set("q", normalizedQuery);
+  if (normalizedTag) params.set("tag", normalizedTag);
 
   const search = params.toString();
   return search ? `/coding?${search}` : "/coding";

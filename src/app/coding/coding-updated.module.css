@@ -1,0 +1,108 @@
+.timestamp {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+  color: #626a75;
+  text-align: right;
+  line-height: 1.5;
+}
+
+.label {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px 7px;
+  font-size: 10px;
+}
+
+.label > span {
+  white-space: nowrap;
+}
+
+.exampleLabel {
+  font-weight: 550;
+  color: #59677a;
+}
+
+.timestamp time {
+  color: #3f4958;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.unavailable {
+  font-size: 12px;
+}
+
+.compact {
+  gap: 3px;
+}
+
+.compact .label {
+  font-size: 9px;
+}
+
+.compact time {
+  font-size: 10px;
+}
+
+.articleDetails {
+  flex: 1;
+  min-width: 0;
+}
+
+.articleMetadata {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px 28px;
+  margin-top: 18px;
+}
+
+.articleMetadata .metadata {
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 8px 14px;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.metadata > span {
+  overflow-wrap: anywhere;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border: 1px solid #e2e5e9;
+  border-radius: 6px;
+  background: #f5f6f8;
+  color: #596576;
+  overflow-wrap: anywhere;
+}
+
+.tag:hover {
+  background: #e8edf3;
+  border-color: #bec8d5;
+}
+
+@media (max-width: 760px) {
+  .articleMetadata {
+    gap: 14px;
+  }
+
+  .tag {
+    min-height: 36px;
+  }
+}

@@ -74,11 +74,13 @@ export function CodingShell({
 export function CodingEmptyState({
   kind,
   query,
+  tag,
   category,
   noPosts,
 }: {
   kind: "empty" | "search" | "missing";
   query?: string;
+  tag?: string;
   category?: CodingCategory;
   noPosts?: boolean;
 }) {
@@ -99,15 +101,18 @@ export function CodingEmptyState({
         {kind === "search"
           ? noPosts
             ? "아직 등록된 자료가 없어 검색할 수 없습니다. 새로운 기록을 기다려 주세요."
-            : `“${query}”에 해당하는 기록이 없습니다. 다른 검색어로 다시 찾아보세요.`
+            : query
+              ? `“${query}”에 해당하는 기록이 없습니다. 다른 검색어로 다시 찾아보세요.`
+              : `#${tag} 태그가 붙은 기록이 없습니다. 다른 태그로 찾아보세요.`
           : kind === "missing"
             ? "주소를 다시 확인하거나 전체 기록에서 찾아보세요."
             : "배우고 경험한 내용을 정리하고 있어요. 곧 새로운 기록으로 만나요."}
       </p>
-      {kind === "search" && (
+      {kind === "search" && query && (
         <Link
           className={styles.emptyAction}
-          href={codingListHref({ category })}
+          href={codingListHref({ category, tag })}
+          scroll={false}
         >
           검색어 지우기 <span aria-hidden="true">×</span>
         </Link>

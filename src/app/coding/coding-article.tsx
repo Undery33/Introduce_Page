@@ -2,7 +2,8 @@ import Link from "next/link";
 import { codingListHref, type CodingPost } from "@/lib/coding";
 import { CodingShell } from "./coding-shell";
 import { CodingIcon } from "./coding-icons";
-import { formatCodingDate } from "./coding-index";
+import { CodingUpdated, formatCodingDate } from "./coding-updated";
+import updatedStyles from "./coding-updated.module.css";
 import styles from "./coding.module.css";
 
 export function CodingArticle({
@@ -33,34 +34,38 @@ export function CodingArticle({
         </Link>
         <header className={styles.articleHeader}>
           <CodingIcon name={post.icon} />
-          <div>
+          <div className={updatedStyles.articleDetails}>
             <div className={styles.articleTitle}>
               <h1>{post.title}</h1>
               <p>{post.description}</p>
             </div>
-            <div className={styles.articleMeta}>
-              {post.isExample && (
-                <span className={styles.exampleBadge}>예시 자료</span>
-              )}
-              {!post.isExample && (
-                <span>
-                  작성{" "}
-                  <time dateTime={post.publishedAt}>
-                    {formatCodingDate(post.publishedAt)}
-                  </time>
-                </span>
-              )}
-              {!post.isExample && post.updatedAt !== post.publishedAt && (
-                <span>
-                  수정{" "}
-                  <time dateTime={post.updatedAt}>
-                    {formatCodingDate(post.updatedAt)}
-                  </time>
-                </span>
-              )}
-              {post.tags.map((tag) => (
-                <span key={tag}>#{tag}</span>
-              ))}
+            <div className={updatedStyles.articleMetadata}>
+              <div
+                className={`${styles.articleMeta} ${updatedStyles.metadata}`}
+              >
+                {post.isExample && (
+                  <span className={styles.exampleBadge}>예시 자료</span>
+                )}
+                {!post.isExample && (
+                  <span>
+                    작성{" "}
+                    <time dateTime={post.publishedAt}>
+                      {formatCodingDate(post.publishedAt)}
+                    </time>
+                  </span>
+                )}
+                {post.tags.map((tag) => (
+                  <Link
+                    key={tag}
+                    className={updatedStyles.tag}
+                    href={codingListHref({ category: post.category, tag })}
+                    aria-label={`${tag} 태그의 글 보기`}
+                  >
+                    #{tag}
+                  </Link>
+                ))}
+              </div>
+              <CodingUpdated post={post} />
             </div>
           </div>
         </header>

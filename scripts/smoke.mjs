@@ -55,6 +55,7 @@ function assertCodingArchive(html, path) {
   const params = new URL(path, origin).searchParams;
   const category = params.get("category");
   const query = params.get("q") || "";
+  const tag = params.get("tag");
   assert.match(markup, /<main\b[^>]*\bid="coding-content"[^>]*>/);
   const sidebar = markup.match(/<aside\b[^>]*>([\s\S]*?)<\/aside>/)?.[1];
   assert.ok(sidebar, `${path}: coding sidebar exists`);
@@ -100,7 +101,7 @@ function assertCodingArchive(html, path) {
   }
   assert.ok(
     markup.includes(
-      query ? "검색 결과가 없습니다." : "아직 등록된 자료가 없습니다.",
+      query || tag ? "검색 결과가 없습니다." : "아직 등록된 자료가 없습니다.",
     ),
     `${path}: correct empty state`,
   );
@@ -109,6 +110,12 @@ function assertCodingArchive(html, path) {
     /Ubuntu에서의 DNS|Rocky에서의 DNS|<a\b[^>]*href="\/coding\/[^"?#]+"/,
     `${path}: no example articles are published`,
   );
+  if (query || tag)
+    assert.match(
+      markup,
+      /<p\b[^>]*\brole="status"[^>]*>/,
+      `${path}: filtered result summary is announced`,
+    );
   const search = [...markup.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/g)].find(
     ([form]) => /\brole="search"/.test(form),
   )?.[0];
@@ -138,6 +145,27 @@ function assertCodingArchive(html, path) {
   } else {
     assert.equal(categoryInput, undefined);
   }
+  const tagInput = [...search.matchAll(/<input\b[^>]*>/g)].find(([field]) =>
+    /\bname="tag"/.test(field),
+  )?.[0];
+  if (tag) {
+    assert.ok(tagInput, `${path}: tag persists on search`);
+    assert.match(tagInput, /\btype="hidden"/);
+    assert.ok(tagInput.includes(`value="${tag}"`));
+    const clearTagLinks = [
+      ...markup.matchAll(/<a\b[^>]*\baria-label="태그 필터 지우기"[^>]*>/g),
+    ];
+    assert.equal(clearTagLinks.length, 1, `${path}: tag can be cleared`);
+    const clearTagHref = clearTagLinks[0][0].match(/\bhref="([^"]+)"/)?.[1];
+    assert.ok(clearTagHref);
+    const clearTagUrl = new URL(clearTagHref.replaceAll("&amp;", "&"), origin);
+    assert.equal(clearTagUrl.pathname, "/coding");
+    assert.equal(clearTagUrl.searchParams.get("category"), category);
+    assert.equal(clearTagUrl.searchParams.get("q") || "", query);
+    assert.equal(clearTagUrl.searchParams.get("tag"), null);
+  } else {
+    assert.equal(tagInput, undefined);
+  }
   const activeLinks = [...markup.matchAll(/<a\b[^>]*>/g)].filter(([anchor]) =>
     /\baria-current="page"/.test(anchor),
   );
@@ -158,6 +186,7 @@ function assertCodingArchive(html, path) {
       const clearUrl = new URL(clearHref.replaceAll("&amp;", "&"), origin);
       assert.equal(clearUrl.pathname, "/coding");
       assert.equal(clearUrl.searchParams.get("category"), category);
+      assert.equal(clearUrl.searchParams.get("tag"), tag);
       assert.equal(clearUrl.searchParams.get("q"), null);
     }
   }
@@ -218,6 +247,8 @@ try {
   for (const path of [
     "/coding",
     "/coding?q=test&category=network",
+    "/coding?tag=DNS",
+    "/coding?category=infrastructure&q=Ubuntu&tag=DNS",
     ...["frontend", "backend", "infrastructure", "network"].map(
       (category) => `/coding?category=${category}`,
     ),
@@ -413,7 +444,7 @@ try {
   assert.match(robots, /Disallow: \//);
   assert.doesNotMatch(robots, /Sitemap:/);
   console.log(
-    `PASS: ${assertions} HTTP checks; root selection page, coding archive empty states and escaped search, two-game selector, restored VRChat draft and photo archive, coming-soon pages, section isolation, metadata, sitemaps, unsupported-route 404s and closed write APIs.`,
+    `PASS: ${assertions} HTTP checks; root selection page, coding archive empty states, escaped search and tag filters, two-game selector, restored VRChat draft and photo archive, coming-soon pages, section isolation, metadata, sitemaps, unsupported-route 404s and closed write APIs.`,
   );
 } finally {
   if (server && server.exitCode === null) {

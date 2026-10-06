@@ -5,11 +5,13 @@ import {
   codingListHref,
   filterCodingPosts,
   getCodingCategory,
-  getCodingPosts,
-  isCodingPreviewEnabled,
   normalizeCodingQuery,
   type CodingPost,
 } from "../src/lib/coding";
+import {
+  getCodingPosts,
+  isCodingPreviewEnabled,
+} from "../src/lib/coding-store";
 
 function post(slug: string, overrides: Partial<CodingPost> = {}): CodingPost {
   return {
@@ -163,6 +165,50 @@ test("production and disabled development never return cached preview examples",
   }
 });
 
+test("a single English initial narrows DNS examples while longer queries still search tags", async () => {
+  await inCodingEnvironment(
+    { NODE_ENV: "development", CODING_PREVIEW: "1" },
+    async () => {
+      const examples = await getCodingPosts();
+      for (const query of ["u", "U"]) {
+        assert.deepEqual(slugs(filterCodingPosts(examples, { query })), [
+          "example-ubuntu-dns",
+        ]);
+      }
+      assert.deepEqual(slugs(filterCodingPosts(examples, { query: "li" })), [
+        "example-ubuntu-dns",
+        "example-rocky-dns",
+      ]);
+    },
+  );
+});
+
+test("single English initials match summary word prefixes, excluding midword and body matches", () => {
+  const posts = [
+    post("title-prefix", { title: "서버 / Ubuntu" }),
+    post("description-prefix", { description: "도구: Utility 소개" }),
+    post("tag-prefix", { tags: ["uTools"] }),
+    post("midword", { title: "Linux", tags: ["Linux"] }),
+    post("body-only", {
+      sections: [
+        { id: "intro", title: "Ubuntu", paragraphs: ["Utility 각 항목"] },
+      ],
+    }),
+  ];
+  assert.deepEqual(slugs(filterCodingPosts(posts, { query: "u" })), [
+    "description-prefix",
+    "tag-prefix",
+    "title-prefix",
+  ]);
+  assert.deepEqual(slugs(filterCodingPosts(posts, { query: "각" })), [
+    "body-only",
+  ]);
+  assert.deepEqual(slugs(filterCodingPosts(posts, { query: "utility" })), [
+    "body-only",
+    "description-prefix",
+  ]);
+});
+
 test("category and query filters combine without exposing other categories", () => {
   const posts = [
     post("dns-server", { title: "Ubuntu DNS 설정" }),
@@ -180,6 +226,63 @@ test("category and query filters combine without exposing other categories", () 
     ["dns-network"],
   );
   assert.deepEqual(filterCodingPosts(posts, { query: "no matching text" }), []);
+});
+
+test("tag filtering matches complete normalized tags rather than text or substrings", () => {
+  const posts = [
+    post("exact", { tags: ["DNS"] }),
+    post("extended", { tags: ["DNSSEC"] }),
+    post("title-only", { title: "DNS" }),
+    post("korean", { tags: ["\u1100\u1161\u11a8"] }),
+  ];
+  assert.deepEqual(slugs(filterCodingPosts(posts, { tag: "  dNs  " })), [
+    "exact",
+  ]);
+  assert.deepEqual(filterCodingPosts(posts, { tag: "DN" }), []);
+  assert.deepEqual(slugs(filterCodingPosts(posts, { tag: "각" })), ["korean"]);
+  assert.deepEqual(
+    slugs(
+      filterCodingPosts([post("composed", { tags: ["각"] })], {
+        tag: " \u1100\u1161\u11a8 ",
+      }),
+    ),
+    ["composed"],
+  );
+  assert.deepEqual(
+    filterCodingPosts(posts, { tag: "   " }),
+    filterCodingPosts(posts),
+  );
+});
+
+test("category, search query, and tag filters must all match", () => {
+  const posts = [
+    post("match", { title: "Ubuntu 조회", tags: ["Linux", "DNS"] }),
+    post("other-category", {
+      title: "Ubuntu 조회",
+      tags: ["DNS"],
+      category: "network",
+    }),
+    post("other-query", { title: "Rocky 조회", tags: ["DNS"] }),
+    post("other-tag", { title: "Ubuntu 조회", tags: ["Linux"] }),
+  ];
+  assert.deepEqual(
+    slugs(
+      filterCodingPosts(posts, {
+        category: "infrastructure",
+        query: "ubuntu",
+        tag: "dns",
+      }),
+    ),
+    ["match"],
+  );
+  assert.deepEqual(
+    filterCodingPosts(posts, {
+      category: "frontend",
+      query: "ubuntu",
+      tag: "dns",
+    }),
+    [],
+  );
 });
 
 test("search matches titles, descriptions, tags, section text, and code", () => {
@@ -261,5 +364,26 @@ test("list URLs encode search text without creating extra parameters or fragment
   assert.equal(url.searchParams.get("category"), "infrastructure");
   assert.equal(url.searchParams.get("q"), query);
   assert.equal(url.searchParams.size, 2);
+  assert.equal(url.hash, "");
+});
+
+test("tag URLs retain category and search while normalizing and safely encoding the tag", () => {
+  assert.equal(codingListHref({ tag: "   " }), "/coding");
+  assert.equal(codingListHref({ tag: " DNS " }), "/coding?tag=DNS");
+
+  const tag = "\u1100\u1161\u11a8 & q=changed # C++ /?";
+  const url = new URL(
+    codingListHref({
+      category: "infrastructure",
+      query: "Ubuntu DNS",
+      tag: `  ${tag}  `,
+    }),
+    "https://example.test",
+  );
+  assert.equal(url.pathname, "/coding");
+  assert.equal(url.searchParams.get("category"), "infrastructure");
+  assert.equal(url.searchParams.get("q"), "Ubuntu DNS");
+  assert.equal(url.searchParams.get("tag"), "각 & q=changed # C++ /?");
+  assert.equal(url.searchParams.size, 3);
   assert.equal(url.hash, "");
 });

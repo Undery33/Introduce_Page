@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getCodingPosts } from "@/lib/coding";
+import { getCodingPosts } from "@/lib/coding-store";
 import { pageMetadata } from "@/lib/metadata";
 import { CodingArticle } from "../coding-article";
 

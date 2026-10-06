@@ -24,11 +24,13 @@
 ### 2026-10-06 — Coding 사용자 시안
 
 - `/coding`에 사용자 제공 4개 시안의 사이드바, 흰색 활성 메뉴, 기존 로고, GitHub 저장소 링크, 최근 업데이트 영역과 둥근 검색창을 반영했다. 후속 요청으로 노란색을 밝은 회색·차콜 조합으로 바꾸고 로고 옆 표기를 `| Coding`으로 변경했다. Pretendard의 제목·메뉴·설명 계층, 카드·태그·코드 블록·포커스 표현을 다듬었다. 모바일에서는 상단 로고와 가로 분류 메뉴로 바뀐다. 스타일은 Coding 전용 CSS 모듈에 둔다.
-- 분류는 `FRONT-END`, `BACK-END`, `SERVER-INFRA`, `NETWORK`이며 URL 값은 각각 `frontend`, `backend`, `infrastructure`, `network`이다. 검색어는 `q`로 유지하고 선택된 분류 안에서 검색한다. 다른 분류 메뉴를 선택하면 검색어를 초기화한다. 검색어 지우기는 현재 분류를 유지한다.
+- 분류는 `FRONT-END`, `BACK-END`, `SERVER-INFRA`, `NETWORK`이며 URL 값은 각각 `frontend`, `backend`, `infrastructure`, `network`이다. HOME과 분류에서 입력 즉시 공개 자료 목록을 필터링하며 검색 버튼을 누를 필요가 없다. 입력과 검색 결과를 `q` URL에 페이지 새로고침 없이 반영한다. 영문 한 글자는 제목·설명·태그의 단어 시작으로 찾아 `u`가 Ubuntu를 표시하며, 그 외에는 기존 본문 포함 부분 검색을 유지한다.
+- 카드와 상세의 태그는 현재 분류 안에서 해당 태그의 자료를 모으는 링크다. `tag` URL에 선택 상태를 저장하고 대소문자·한글 정규화를 적용해 정확히 일치하는 태그만 찾는다. 카드에서 태그를 선택하면 기존 검색어를 유지해 두 조건으로 함께 좁힌다. 검색어 지우기는 분류·태그를 유지하고, 태그 지우기는 분류·검색어를 유지한다. 다른 분류 메뉴를 선택하면 두 필터를 초기화한다.
 - 검색창 옆의 큰 분류 제목은 루트 메인 홈페이지 `/`로 연결한다. 사이드바 HOME과 로고는 `/coding`으로 연결한다. 루트 이동은 사용자가 지정한 분류 제목에만 제공한다.
-- DB 연결 전이므로 `src/lib/coding.ts`의 `getCodingPosts()`는 운영 환경에서 빈 목록을 반환한다. 후속 요청으로 `NODE_ENV=development`와 `CODING_PREVIEW=1`이 모두 설정된 로컬 개발 미리보기에서만 Ubuntu/Rocky/DNS 예시를 표시한다. Ubuntu·Rocky는 SERVER-INFRA, DNS는 NETWORK이며 카드와 상세에 ‘예시 자료’를 표시한다. `CODING_PREVIEW=1`이어도 운영 빌드는 빈 목록이다. 예시는 실제 자료·시드·DB 오류 시 fallback으로 사용하지 않는다.
+- DB 연결 전이므로 `src/lib/coding-store.ts`의 `getCodingPosts()`는 운영 환경에서 빈 목록을 반환한다. 자료 조회는 서버 페이지에서만 수행하고 클라이언트 공용 필터와 분리한다. 후속 요청으로 `NODE_ENV=development`와 `CODING_PREVIEW=1`이 모두 설정된 로컬 개발 미리보기에서만 Ubuntu/Rocky/DNS 예시를 표시한다. Ubuntu·Rocky는 SERVER-INFRA, DNS는 NETWORK이며 카드와 상세에 ‘예시 자료’를 표시한다. `CODING_PREVIEW=1`이어도 운영 빌드는 빈 목록이다. 예시는 실제 자료·시드·DB 오류 시 fallback으로 사용하지 않는다.
 - 공개 글 데이터 계약과 카드·최신 업데이트·상세 템플릿을 준비했다. 추후 공개 DTO 조회를 `getCodingPosts()`에 연결하면 제목·설명·태그·본문 검색과 수정일 기준 최신 정렬을 사용할 수 있다. 현재 DB/API 연결이나 관리자 작성 기능은 구현하지 않았다.
 - `/coding/[slug]`의 상세 템플릿은 아이콘·제목·설명·작성/수정일·태그와 본문·코드 블록을 표시한다. 시안의 ‘다음: 2. DNS 패키지 설치’처럼 이전/다음은 **같은 글의 목차**를 이동하며 `?section=목차ID`로 직접 접근할 수 있다. 잘못된 목차 ID는 첫 목차를 표시한다. 첫 목차의 이전과 마지막 목차의 다음은 표시하지 않는다.
+- 카드 하단과 상세 헤더의 오른쪽에는 마지막 업데이트 날짜를 서울 시간 기준 `YYYY.MM.DD`로 표시한다. 최근 업데이트 카드에도 날짜를 표시하며 개발 자료에는 ‘예시 날짜’ 표시를 함께 둔다. 실제 자료는 DTO의 `updatedAt`을 사용한다. 카드 상세 링크와 태그 링크는 서로 중첩하지 않아 각각 독립적으로 조작할 수 있다.
 - 실제 글이 없으므로 운영 빌드의 모든 상세 slug는 현재 자료 없음 화면과 HTTP 404를 반환한다. 개발 미리보기의 `example-ubuntu-dns`, `example-rocky-dns`, `example-dns`는 같은 상세 템플릿을 사용한다. 예시 모듈은 개발 전용 조건 안에서만 불러오며 URL 매개변수로 켤 수 없다. 운영 서비스·DB·Jenkins 설정은 변경하지 않았다.
 
 개발 예시 확인: `.env.local`에 `CODING_PREVIEW=1`을 설정하고 `npm run dev`로 실행한다. 실제 배포는 `npm run build`의 운영 산출물을 사용한다. `.env.local`은 저장소에 포함하지 않으며 예시를 볼 필요가 없으면 설정을 지우거나 `0`으로 바꾼다. 현재 작업의 로컬 미리보기는 프로세스 환경변수로만 예시를 켰다.
@@ -82,7 +84,8 @@ DB 준비 후 `.env.example`을 참고해 별도의 비공개 환경 설정에 `
 | `src/app/{coding,game,whoami}`                | 독립 영역 화면·메타데이터·사이트맵      |
 | `src/components/section-shell.tsx`            | 영역별 레이아웃과 공통 디자인           |
 | `src/lib/sections.ts`                         | 경로·메뉴·분류의 기준                   |
-| `src/app/coding/coding-shell.tsx`, `src/lib/coding.ts` | Coding 전용 레이아웃·분류·공개 자료 조회 |
+| `src/app/coding/coding-shell.tsx`, `src/lib/coding.ts` | Coding 전용 레이아웃·분류·공용 필터 |
+| `src/lib/coding-store.ts` | 서버의 공개 자료 조회와 개발 예시 분리 |
 | `src/lib/public-profile.ts`                   | 공개 상태·필드 공개 여부를 적용하는 DTO |
 | `src/lib/comment-input.ts`                    | 클라이언트/서버 공용 입력 규칙          |
 | `prisma/`                                     | 데이터 모델·변경 이력                   |

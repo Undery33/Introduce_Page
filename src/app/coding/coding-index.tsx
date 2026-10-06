@@ -1,80 +1,98 @@
+"use client";
+
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   codingListHref,
   filterCodingPosts,
   getCodingCategory,
+  normalizeCodingQuery,
+  type CodingCategory,
   type CodingPost,
 } from "@/lib/coding";
 import { CodingIcon } from "./coding-icons";
 import { CodingEmptyState, CodingShell } from "./coding-shell";
+import { CodingUpdated } from "./coding-updated";
 import styles from "./coding.module.css";
 
 export function CodingCard({
   post,
   compact = false,
+  category,
+  query,
 }: {
   post: CodingPost;
   compact?: boolean;
+  category?: CodingCategory;
+  query?: string;
 }) {
-  const category = getCodingCategory(post.category);
+  const postCategory = getCodingCategory(post.category);
   return (
-    <Link
-      href={`/coding/${encodeURIComponent(post.slug)}`}
-      className={`${styles.card} ${compact ? styles.compactCard : ""}`}
-    >
-      <div className={styles.cardTop}>
-        <span>{category?.label}</span>
-        <div className={styles.cardIcon}>
-          <CodingIcon name={post.icon} />
+    <article className={`${styles.card} ${compact ? styles.compactCard : ""}`}>
+      <Link
+        href={`/coding/${encodeURIComponent(post.slug)}`}
+        className={styles.cardMain}
+        aria-label={post.title}
+      >
+        <div className={styles.cardTop}>
+          <span>{postCategory?.label}</span>
+          <div className={styles.cardIcon}>
+            <CodingIcon name={post.icon} />
+          </div>
         </div>
-      </div>
-      <h3>{post.title}</h3>
-      {!compact && <p>{post.description}</p>}
+        <h3>{post.title}</h3>
+        {!compact && <p>{post.description}</p>}
+      </Link>
       {!compact && post.tags.length > 0 && (
         <div className={styles.cardTags}>
           {post.tags.slice(0, 3).map((tag) => (
-            <span key={tag}>{tag}</span>
+            <Link
+              key={tag}
+              href={codingListHref({ category, query, tag })}
+              scroll={false}
+              aria-label={`${tag} 태그로 필터링`}
+            >
+              {tag}
+            </Link>
           ))}
         </div>
       )}
       <div className={styles.cardBottom}>
-        {post.isExample ? (
+        {post.isExample && !compact && (
           <span className={styles.exampleBadge}>예시 자료</span>
-        ) : (
-          <time dateTime={post.updatedAt}>
-            {formatCodingDate(post.updatedAt)}
-          </time>
         )}
-        <CodingIcon name="arrow" />
+        <CodingUpdated post={post} compact={compact} />
       </div>
-    </Link>
+    </article>
   );
 }
 
-export function formatCodingDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : new Intl.DateTimeFormat("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        timeZone: "Asia/Seoul",
-      }).format(date);
-}
-
-export function CodingIndex({
-  posts,
-  results,
-  query,
-  category,
-}: {
-  posts: readonly CodingPost[];
-  results: readonly CodingPost[];
-  query: string;
-  category?: ReturnType<typeof getCodingCategory>;
-}) {
+export function CodingIndex({ posts }: { posts: readonly CodingPost[] }) {
+  const searchParams = useSearchParams();
+  const rawQuery = searchParams.get("q") ?? "";
+  const query = normalizeCodingQuery(rawQuery);
+  const tag = normalizeCodingQuery(searchParams.get("tag") ?? "");
+  const category = getCodingCategory(searchParams.get("category") ?? "");
+  const results = filterCodingPosts(posts, {
+    query,
+    tag,
+    category: category?.id,
+  });
   const recent = filterCodingPosts(posts, {}).slice(0, 4);
+
+  function updateQuery(value: string) {
+    // Keep the raw input (including spaces and Korean composition) in the URL;
+    // filtering normalizes it separately, without a round trip or debounce.
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) params.set("q", value);
+    else params.delete("q");
+    const suffix = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      suffix ? `/coding?${suffix}` : "/coding",
+    );
+  }
   return (
     <CodingShell category={category?.id}>
       <div className={styles.indexContent}>
@@ -137,6 +155,7 @@ export function CodingIndex({
             <form
               className={styles.search}
               action="/coding"
+              onSubmit={(event) => event.preventDefault()}
               role="search"
               aria-label={
                 category ? `${category.label} 자료 검색` : "전체 코딩 자료 검색"
@@ -148,13 +167,14 @@ export function CodingIndex({
               {category && (
                 <input type="hidden" name="category" value={category.id} />
               )}
+              {tag && <input type="hidden" name="tag" value={tag} />}
               <input
                 id="coding-search"
                 name="q"
                 type="search"
                 maxLength={100}
-                defaultValue={query}
-                key={`${category?.id ?? "home"}:${query}`}
+                value={rawQuery}
+                onChange={(event) => updateQuery(event.target.value)}
                 placeholder="어떤 기술이 궁금한가요?"
                 autoComplete="off"
               />
@@ -163,20 +183,39 @@ export function CodingIndex({
               </button>
             </form>
           </div>
-          {(query || results.length > 0) && (
+          {tag && (
+            <div className={styles.activeTag}>
+              <span>
+                선택한 태그 <strong>#{tag}</strong>
+              </span>
+              <Link
+                href={codingListHref({ category: category?.id, query })}
+                scroll={false}
+                aria-label="태그 필터 지우기"
+              >
+                태그 지우기 <span aria-hidden="true">×</span>
+              </Link>
+            </div>
+          )}
+          {(query || tag || results.length > 0) && (
             <div className={styles.resultSummary}>
-              <p>
+              <p role="status" aria-live="polite" aria-atomic="true">
                 {query ? (
                   <>
                     “<strong>{query}</strong>” 검색 결과
                   </>
+                ) : tag ? (
+                  "태그 검색 결과"
                 ) : (
                   "전체 기록"
                 )}{" "}
                 <span>{results.length}</span>
               </p>
               {query && results.length > 0 && (
-                <Link href={codingListHref({ category: category?.id })}>
+                <Link
+                  href={codingListHref({ category: category?.id, tag })}
+                  scroll={false}
+                >
                   검색어 지우기 ×
                 </Link>
               )}
@@ -185,13 +224,19 @@ export function CodingIndex({
           {results.length ? (
             <div className={styles.cardGrid}>
               {results.map((post) => (
-                <CodingCard key={post.slug} post={post} />
+                <CodingCard
+                  key={post.slug}
+                  post={post}
+                  category={category?.id}
+                  query={query}
+                />
               ))}
             </div>
           ) : (
             <CodingEmptyState
-              kind={query ? "search" : "empty"}
+              kind={query || tag ? "search" : "empty"}
               query={query}
+              tag={tag}
               category={category?.id}
               noPosts={posts.length === 0}
             />

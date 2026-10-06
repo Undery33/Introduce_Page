@@ -415,6 +415,32 @@
   padding: 12px 0;
   font-size: 12px;
 }
+.activeTag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  color: var(--coding-muted);
+  font-size: 12px;
+}
+.activeTag strong {
+  margin-left: 8px;
+  color: var(--coding-ink);
+  overflow-wrap: anywhere;
+}
+.activeTag a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 5px 12px;
+  border: 1px solid var(--coding-line);
+  border-radius: 20px;
+}
+.activeTag a:hover {
+  background: var(--coding-wash);
+}
 .cardGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -422,6 +448,7 @@
   margin-top: 22px;
 }
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -440,6 +467,19 @@
   border-color: #aab3c0;
   box-shadow: 0 12px 28px #27334a0c;
   transform: translateY(-4px);
+}
+.cardMain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+}
+.cardMain:focus-visible {
+  outline: none;
+}
+.card:has(.cardMain:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 .cardTop {
   display: flex;
@@ -475,7 +515,7 @@
   letter-spacing: -0.5px;
   overflow-wrap: anywhere;
 }
-.card > p {
+.cardMain > p {
   margin-top: 10px;
   font-size: 14px;
   color: var(--coding-muted);
@@ -503,14 +543,25 @@
   gap: 6px;
   padding: 16px 0 22px;
 }
-.cardTags > span {
+.cardTags > a {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
   max-width: 100%;
   overflow-wrap: anywhere;
   border-radius: 5px;
   background: var(--coding-wash);
   color: #657080;
-  font-size: 10px;
-  padding: 4px 7px;
+  font-size: 11px;
+  padding: 4px 9px;
+  border: 1px solid transparent;
+}
+.cardTags > a:hover {
+  color: var(--coding-ink);
+  background: #e8edf3;
+  border-color: #bec8d5;
 }
 .exampleBadge {
   display: inline-flex;
@@ -519,6 +570,7 @@
   color: #637084;
   font-size: 10px;
   font-weight: 500;
+  flex-shrink: 0;
 }
 .exampleBadge::before {
   content: "";
@@ -766,6 +818,9 @@
   }
   .cardGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cardTags > a {
+    min-height: 40px;
   }
   .recentGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -1,10 +1,5 @@
 import { pageMetadata } from "@/lib/metadata";
-import {
-  filterCodingPosts,
-  getCodingCategory,
-  getCodingPosts,
-  normalizeCodingQuery,
-} from "@/lib/coding";
+import { getCodingPosts } from "@/lib/coding-store";
 import { CodingIndex } from "./coding-index";
 
 export const metadata = pageMetadata(
@@ -19,19 +14,11 @@ export default async function CodingPage({
   searchParams: Promise<{
     q?: string | string[];
     category?: string | string[];
+    tag?: string | string[];
   }>;
 }) {
-  const params = await searchParams;
-  const query = normalizeCodingQuery(params.q);
-  const category = getCodingCategory(params.category);
+  // Resolve the request before rendering URL-driven client filters on the server.
+  await searchParams;
   const posts = await getCodingPosts();
-  const results = filterCodingPosts(posts, { query, category: category?.id });
-  return (
-    <CodingIndex
-      posts={posts}
-      results={results}
-      query={query}
-      category={category}
-    />
-  );
+  return <CodingIndex posts={posts} />;
 }
