@@ -50,6 +50,76 @@ function assertComingSoon(html, path) {
     `${path}: only the requested placeholder text is rendered`,
   );
 }
+function assertCodingArchive(html, path) {
+  const markup = bodyMarkup(html);
+  const params = new URL(path, origin).searchParams;
+  const category = params.get("category");
+  const query = params.get("q") || "";
+  assert.match(markup, /<main\b[^>]*\bid="coding-content"[^>]*>/);
+  assert.ok(
+    markup.includes(
+      query ? "검색 결과가 없습니다." : "아직 등록된 자료가 없습니다.",
+    ),
+    `${path}: correct empty state`,
+  );
+  assert.doesNotMatch(
+    markup,
+    /Ubuntu에서의 DNS|Rocky에서의 DNS|<a\b[^>]*href="\/coding\/[^"?#]+"/,
+    `${path}: no example articles are published`,
+  );
+  const search = [...markup.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/g)].find(
+    ([form]) => /\brole="search"/.test(form),
+  )?.[0];
+  assert.ok(search, `${path}: search form exists`);
+  assert.match(search, /\baction="\/coding"/);
+  assert.doesNotMatch(search, /\bmethod="(?!get")/i);
+  const input = [...search.matchAll(/<input\b[^>]*>/g)].find(([field]) =>
+    /\bname="q"/.test(field),
+  )?.[0];
+  assert.ok(input, `${path}: search query input exists`);
+  const escapedQuery = query
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+  assert.ok(
+    input.includes(`value="${escapedQuery}"`),
+    `${path}: search input preserves and escapes the query`,
+  );
+  const categoryInput = [...search.matchAll(/<input\b[^>]*>/g)].find(
+    ([field]) => /\bname="category"/.test(field),
+  )?.[0];
+  if (category) {
+    assert.ok(categoryInput, `${path}: category persists on search`);
+    assert.match(categoryInput, /\btype="hidden"/);
+    assert.ok(categoryInput.includes(`value="${category}"`));
+  } else {
+    assert.equal(categoryInput, undefined);
+  }
+  const activeLinks = [...markup.matchAll(/<a\b[^>]*>/g)].filter(([anchor]) =>
+    /\baria-current="page"/.test(anchor),
+  );
+  assert.equal(activeLinks.length, 1, `${path}: one selected navigation item`);
+  const href = activeLinks[0][0].match(/\bhref="([^"]+)"/)?.[1];
+  assert.ok(href);
+  const activeUrl = new URL(href.replaceAll("&amp;", "&"), origin);
+  assert.equal(activeUrl.pathname, "/coding");
+  assert.equal(activeUrl.searchParams.get("category"), category);
+  if (query) {
+    const clearLinks = [...markup.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/g)].filter(
+      ([anchor]) => anchor.includes("검색어 지우기"),
+    );
+    assert.ok(clearLinks.length > 0, `${path}: search can be cleared`);
+    for (const [anchor] of clearLinks) {
+      const clearHref = anchor.match(/\bhref="([^"]+)"/)?.[1];
+      assert.ok(clearHref);
+      const clearUrl = new URL(clearHref.replaceAll("&amp;", "&"), origin);
+      assert.equal(clearUrl.pathname, "/coding");
+      assert.equal(clearUrl.searchParams.get("category"), category);
+      assert.equal(clearUrl.searchParams.get("q"), null);
+    }
+  }
+}
 try {
   let ready = false;
   for (let attempt = 0; attempt < 120; attempt++) {
@@ -105,6 +175,9 @@ try {
   for (const path of [
     "/coding",
     "/coding?q=test&category=network",
+    ...["frontend", "backend", "infrastructure", "network"].map(
+      (category) => `/coding?category=${category}`,
+    ),
     "/game",
     "/game/highlights",
     "/game/valorant",
@@ -123,6 +196,7 @@ try {
         `<link rel="canonical" href="https://undery.link${path.split("?")[0]}"`,
       ),
     );
+    if (section === "coding") assertCodingArchive(html, path);
     if (path === "/game") {
       const choices = [...html.matchAll(/<a\b[^>]*data-game="([^"]+)"[^>]*>/g)];
       assert.equal(choices.length, 2, "Game selector has exactly two choices");
@@ -229,13 +303,21 @@ try {
       );
     }
   }
+  const escapedSearchPath = `/coding?category=infrastructure&q=${encodeURIComponent('<svg onload="alert(1)"> & DNS')}`;
+  const escapedSearch = await (await request(escapedSearchPath, 200)).text();
+  assertCodingArchive(escapedSearch, escapedSearchPath);
+  assert.doesNotMatch(bodyMarkup(escapedSearch), /<svg\s+onload=/i);
   for (const section of ["coding", "game", "whoami"]) {
     const missing = await (
       await request(`/${section}/does-not-exist`, 404)
     ).text();
     // Next streams dynamic not-found content in its React payload. The actual
     // rendered placeholder for these paths is verified in the browser.
-    assert.ok(missing.includes("준비 중"));
+    assert.ok(
+      missing.includes(
+        section === "coding" ? "자료를 찾을 수 없습니다." : "준비 중",
+      ),
+    );
     const xml = await (await request(`/${section}/sitemap.xml`, 200)).text();
     const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(
       (match) => new URL(match[1]),
@@ -285,7 +367,7 @@ try {
   assert.match(robots, /Disallow: \//);
   assert.doesNotMatch(robots, /Sitemap:/);
   console.log(
-    `PASS: ${assertions} HTTP checks; root selection page, two-game selector, restored VRChat draft and photo archive, coming-soon pages, section isolation, metadata, sitemaps, unsupported-route 404s and closed write APIs.`,
+    `PASS: ${assertions} HTTP checks; root selection page, coding archive empty states and escaped search, two-game selector, restored VRChat draft and photo archive, coming-soon pages, section isolation, metadata, sitemaps, unsupported-route 404s and closed write APIs.`,
   );
 } finally {
   if (server && server.exitCode === null) {
