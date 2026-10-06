@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  devIndicators: false,
   experimental: { cpus: 2 },
   env: { BUILD_COMMIT: process.env.BUILD_COMMIT ?? "local" },
   async headers() {

@@ -40,6 +40,7 @@ export type CodingPost = {
   updatedAt: string;
   tags: readonly string[];
   sections: readonly CodingSection[];
+  isExample?: boolean;
 };
 
 type CodingFilters = { category?: CodingCategory; query?: string };
@@ -61,9 +62,22 @@ export function normalizeCodingQuery(value?: string | string[]): string {
     .trim();
 }
 
+export function isCodingPreviewEnabled(
+  environment: { NODE_ENV?: string; CODING_PREVIEW?: string } = process.env,
+): boolean {
+  return (
+    environment.NODE_ENV === "development" && environment.CODING_PREVIEW === "1"
+  );
+}
+
 export async function getCodingPosts(): Promise<readonly CodingPost[]> {
-  // Replace this adapter with an explicit public-post DTO query once the DB is
-  // ready. The design's DNS examples are not published content or seed data.
+  if (isCodingPreviewEnabled()) {
+    const { codingExamplePosts } = await import("./coding-examples");
+    return codingExamplePosts;
+  }
+
+  // Replace only this empty public-post adapter with an explicit DTO query when
+  // the DB is ready. Development examples must never be a DB fallback or seed.
   return [];
 }
 

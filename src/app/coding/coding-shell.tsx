@@ -21,13 +21,9 @@ export function CodingShell({
         본문으로 바로가기
       </a>
       <aside className={styles.sidebar}>
-        <Link
-          href="/coding"
-          className={styles.brand}
-          aria-label="UNDERY 코딩 홈"
-        >
-          <BrandLogo size={68} alt="" />
-          <span>UNDERY</span>
+        <Link href="/coding" className={styles.brand} aria-label="Coding 홈">
+          <BrandLogo size={44} alt="" />
+          <span>| Coding</span>
         </Link>
         <nav className={styles.navigation} aria-label="코딩 자료 분류">
           <Link
@@ -35,15 +31,21 @@ export function CodingShell({
             className={styles.navLink}
             aria-current={!category ? "page" : undefined}
           >
+            <span className={styles.navNumber} aria-hidden="true">
+              00
+            </span>
             HOME
           </Link>
-          {codingCategories.map((item) => (
+          {codingCategories.map((item, index) => (
             <Link
               key={item.id}
               href={codingListHref({ category: item.id })}
               className={styles.navLink}
               aria-current={category === item.id ? "page" : undefined}
             >
+              <span className={styles.navNumber} aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </span>
               {item.label}
             </Link>
           ))}

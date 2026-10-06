@@ -6,6 +6,7 @@ import {
   filterCodingPosts,
   getCodingCategory,
   getCodingPosts,
+  isCodingPreviewEnabled,
   normalizeCodingQuery,
   type CodingPost,
 } from "../src/lib/coding";
@@ -26,6 +27,22 @@ function post(slug: string, overrides: Partial<CodingPost> = {}): CodingPost {
 }
 
 const slugs = (posts: readonly CodingPost[]) => posts.map((item) => item.slug);
+
+async function inCodingEnvironment(
+  environment: { NODE_ENV?: string; CODING_PREVIEW?: string },
+  run: () => Promise<void>,
+) {
+  const original = process.env;
+  process.env = { ...original };
+  Reflect.deleteProperty(process.env, "NODE_ENV");
+  Reflect.deleteProperty(process.env, "CODING_PREVIEW");
+  Object.assign(process.env, environment);
+  try {
+    await run();
+  } finally {
+    process.env = original;
+  }
+}
 
 test("categories match the design and reject unsupported URL values", () => {
   assert.deepEqual(
@@ -55,12 +72,95 @@ test("queries use the first parameter, trim, normalize Korean, and limit length"
 });
 
 test("the unconnected content adapter returns no sample or seeded records", async () => {
-  assert.deepEqual(await getCodingPosts(), []);
+  await inCodingEnvironment({}, async () => {
+    assert.deepEqual(await getCodingPosts(), []);
+  });
   assert.deepEqual(filterCodingPosts([]), []);
   assert.deepEqual(
     filterCodingPosts([], { category: "infrastructure", query: "DNS" }),
     [],
   );
+});
+
+test("preview requires both development mode and the exact opt-in flag", () => {
+  assert.equal(
+    isCodingPreviewEnabled({ NODE_ENV: "development", CODING_PREVIEW: "1" }),
+    true,
+  );
+  for (const environment of [
+    {},
+    { NODE_ENV: "development" },
+    { CODING_PREVIEW: "1" },
+    { NODE_ENV: "development", CODING_PREVIEW: "0" },
+    { NODE_ENV: "development", CODING_PREVIEW: "true" },
+    { NODE_ENV: "development", CODING_PREVIEW: " 1 " },
+    { NODE_ENV: "production", CODING_PREVIEW: "1" },
+    { NODE_ENV: "test", CODING_PREVIEW: "1" },
+  ]) {
+    assert.equal(isCodingPreviewEnabled(environment), false);
+  }
+});
+
+test("enabled development preview supplies labeled DNS examples and chapter content", async () => {
+  await inCodingEnvironment(
+    { NODE_ENV: "development", CODING_PREVIEW: "1" },
+    async () => {
+      const examples = await getCodingPosts();
+      assert.deepEqual(slugs(examples), [
+        "example-ubuntu-dns",
+        "example-rocky-dns",
+        "example-dns",
+      ]);
+      assert.deepEqual(
+        slugs(
+          filterCodingPosts(examples, {
+            category: "infrastructure",
+            query: "DNS",
+          }),
+        ),
+        ["example-ubuntu-dns", "example-rocky-dns"],
+      );
+      assert.deepEqual(
+        slugs(
+          filterCodingPosts(examples, { category: "network", query: "DNS" }),
+        ),
+        ["example-dns"],
+      );
+      for (const example of examples) {
+        assert.equal(example.isExample, true);
+        assert.deepEqual(
+          example.sections.map((section) => section.title),
+          ["개요", "DNS 패키지 설치", "설정 확인"],
+        );
+        assert.equal(
+          new Set(example.sections.map((section) => section.id)).size,
+          3,
+        );
+        assert.ok(
+          example.sections.every(
+            (section) =>
+              section.paragraphs.length > 0 &&
+              section.paragraphs.every(
+                (paragraph) => paragraph.trim().length > 0,
+              ),
+          ),
+        );
+        assert.match(example.sections[1].code?.value ?? "", /dig example\.com/);
+      }
+    },
+  );
+});
+
+test("production and disabled development never return cached preview examples", async () => {
+  for (const environment of [
+    { NODE_ENV: "production", CODING_PREVIEW: "1" },
+    { NODE_ENV: "development", CODING_PREVIEW: "0" },
+    { NODE_ENV: "test", CODING_PREVIEW: "1" },
+  ]) {
+    await inCodingEnvironment(environment, async () => {
+      assert.deepEqual(await getCodingPosts(), []);
+    });
+  }
 });
 
 test("category and query filters combine without exposing other categories", () => {

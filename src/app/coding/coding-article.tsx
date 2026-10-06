@@ -39,13 +39,18 @@ export function CodingArticle({
               <p>{post.description}</p>
             </div>
             <div className={styles.articleMeta}>
-              <span>
-                작성{" "}
-                <time dateTime={post.publishedAt}>
-                  {formatCodingDate(post.publishedAt)}
-                </time>
-              </span>
-              {post.updatedAt !== post.publishedAt && (
+              {post.isExample && (
+                <span className={styles.exampleBadge}>예시 자료</span>
+              )}
+              {!post.isExample && (
+                <span>
+                  작성{" "}
+                  <time dateTime={post.publishedAt}>
+                    {formatCodingDate(post.publishedAt)}
+                  </time>
+                </span>
+              )}
+              {!post.isExample && post.updatedAt !== post.publishedAt && (
                 <span>
                   수정{" "}
                   <time dateTime={post.updatedAt}>

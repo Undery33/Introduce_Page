@@ -24,14 +24,27 @@ export function CodingCard({
     >
       <div className={styles.cardTop}>
         <span>{category?.label}</span>
-        <CodingIcon name={post.icon} />
+        <div className={styles.cardIcon}>
+          <CodingIcon name={post.icon} />
+        </div>
       </div>
       <h3>{post.title}</h3>
       {!compact && <p>{post.description}</p>}
+      {!compact && post.tags.length > 0 && (
+        <div className={styles.cardTags}>
+          {post.tags.slice(0, 3).map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
+        </div>
+      )}
       <div className={styles.cardBottom}>
-        <time dateTime={post.updatedAt}>
-          {formatCodingDate(post.updatedAt)}
-        </time>
+        {post.isExample ? (
+          <span className={styles.exampleBadge}>예시 자료</span>
+        ) : (
+          <time dateTime={post.updatedAt}>
+            {formatCodingDate(post.updatedAt)}
+          </time>
+        )}
         <CodingIcon name="arrow" />
       </div>
     </Link>
@@ -68,7 +81,9 @@ export function CodingIndex({
         {!category && (
           <section className={styles.recent} aria-labelledby="recent-heading">
             <div className={styles.sectionLabel}>
-              <h2 id="recent-heading">최근 업데이트</h2>
+              <h2 id="recent-heading">
+                최근 업데이트 <span>LATEST NOTES</span>
+              </h2>
               <CodingIcon name="clock" />
             </div>
             {recent.length ? (
@@ -92,13 +107,33 @@ export function CodingIndex({
           aria-labelledby="coding-heading"
         >
           <div className={category ? styles.categoryHeader : styles.homeHeader}>
-            <h1 id="coding-heading">
-              {category?.label ?? (
-                <>
-                  기술에 대한 기록 검색, <span>여기에!</span>
-                </>
+            <div className={styles.headingGroup}>
+              {category && (
+                <p className={styles.eyebrow}>DEVELOPMENT JOURNAL</p>
               )}
-            </h1>
+              <h1 id="coding-heading">
+                {category ? (
+                  <Link
+                    className={styles.headingLink}
+                    href="/"
+                    aria-label={`${category.label} · 메인 홈페이지로`}
+                    title="메인 홈페이지로 돌아가기"
+                  >
+                    {category.label}
+                    <CodingIcon name="arrow" />
+                  </Link>
+                ) : (
+                  <>
+                    기술에 대한 기록 검색, <span>여기에!</span>
+                  </>
+                )}
+              </h1>
+              {category && (
+                <p className={styles.categoryDescription}>
+                  {category.description}
+                </p>
+              )}
+            </div>
             <form
               className={styles.search}
               action="/coding"

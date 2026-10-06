@@ -56,6 +56,48 @@ function assertCodingArchive(html, path) {
   const category = params.get("category");
   const query = params.get("q") || "";
   assert.match(markup, /<main\b[^>]*\bid="coding-content"[^>]*>/);
+  const sidebar = markup.match(/<aside\b[^>]*>([\s\S]*?)<\/aside>/)?.[1];
+  assert.ok(sidebar, `${path}: coding sidebar exists`);
+  const brand = [...sidebar.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/g)].find(
+    ([anchor]) => /<img\b/.test(anchor),
+  )?.[0];
+  assert.ok(brand, `${path}: existing brand image remains visible`);
+  assert.match(brand, /\bhref="\/coding"/);
+  assert.match(
+    brand.replace(/<!--[\s\S]*?-->|<[^>]*>/g, " "),
+    /\|\s*Coding/,
+    `${path}: Coding label appears beside the logo`,
+  );
+  const rootLinks = [...markup.matchAll(/<a\b[^>]*\bhref="\/"[^>]*>/g)];
+  let rootHeadingLink;
+  if (category) {
+    const labels = {
+      frontend: "FRONT-END",
+      backend: "BACK-END",
+      infrastructure: "SERVER-INFRA",
+      network: "NETWORK",
+    };
+    const label = labels[category];
+    assert.ok(label, `${path}: supported category`);
+    const heading = markup.match(
+      /<h1\b[^>]*\bid="coding-heading"[^>]*>([\s\S]*?)<\/h1>/,
+    )?.[1];
+    assert.ok(heading, `${path}: category heading exists`);
+    rootHeadingLink = heading.match(/<a\b[^>]*\bhref="\/"[^>]*>/)?.[0];
+    assert.ok(rootHeadingLink, `${path}: category title links to the homepage`);
+    assert.ok(
+      rootHeadingLink.includes(`aria-label="${label} · 메인 홈페이지로"`),
+      `${path}: category homepage link has a descriptive name`,
+    );
+    assert.equal(
+      rootLinks.length,
+      1,
+      `${path}: only the category title links home`,
+    );
+    assert.equal(rootLinks[0][0], rootHeadingLink);
+  } else {
+    assert.equal(rootLinks.length, 0, `${path}: no additional homepage links`);
+  }
   assert.ok(
     markup.includes(
       query ? "검색 결과가 없습니다." : "아직 등록된 자료가 없습니다.",
@@ -119,6 +161,7 @@ function assertCodingArchive(html, path) {
       assert.equal(clearUrl.searchParams.get("q"), null);
     }
   }
+  return rootHeadingLink;
 }
 try {
   let ready = false;
@@ -196,7 +239,8 @@ try {
         `<link rel="canonical" href="https://undery.link${path.split("?")[0]}"`,
       ),
     );
-    if (section === "coding") assertCodingArchive(html, path);
+    const rootHeadingLink =
+      section === "coding" ? assertCodingArchive(html, path) : undefined;
     if (path === "/game") {
       const choices = [...html.matchAll(/<a\b[^>]*data-game="([^"]+)"[^>]*>/g)];
       assert.equal(choices.length, 2, "Game selector has exactly two choices");
@@ -285,8 +329,8 @@ try {
         "Photo archive initially displays the six existing photos",
       );
     }
-    for (const [, href] of bodyMarkup(html).matchAll(
-      /<a\b[^>]*href="([^"]+)"/g,
+    for (const [anchor, href] of bodyMarkup(html).matchAll(
+      /<a\b[^>]*href="([^"]+)"[^>]*>/g,
     )) {
       if (
         !href.startsWith("/") ||
@@ -294,6 +338,8 @@ try {
         href.startsWith("/images/vrchat/")
       )
         continue;
+      // The user-authorized homepage exit is only the category title above.
+      if (href === "/" && anchor === rootHeadingLink) continue;
       assert.ok(
         href === `/${section}` ||
           href.startsWith(`/${section}/`) ||
