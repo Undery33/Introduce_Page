@@ -59,6 +59,12 @@
   letter-spacing: -0.6px;
   white-space: nowrap;
 }
+.brandDivider {
+  width: 1px;
+  height: 26px;
+  flex-shrink: 0;
+  background: #aab2bd;
+}
 .navigation {
   display: flex;
   flex-direction: column;
@@ -415,31 +421,57 @@
   padding: 12px 0;
   font-size: 12px;
 }
-.activeTag {
+.tagFilters {
+  margin-top: 22px;
+}
+.tagOptions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-top: 24px;
-  color: var(--coding-muted);
-  font-size: 12px;
+  gap: 8px;
 }
-.activeTag strong {
-  margin-left: 8px;
-  color: var(--coding-ink);
-  overflow-wrap: anywhere;
-}
-.activeTag a {
+.tagOptions button,
+.clearTags {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 7px;
   min-height: 36px;
-  padding: 5px 12px;
+  padding: 6px 13px;
   border: 1px solid var(--coding-line);
   border-radius: 20px;
+  background: #fff;
+  color: #626a75;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
-.activeTag a:hover {
+.tagOptions button:hover {
+  border-color: #aab3c0;
   background: var(--coding-wash);
+}
+.tagOptions button[aria-pressed="true"] {
+  border-color: #485363;
+  background: #485363;
+  color: #fff;
+}
+.tagOptions button > span {
+  opacity: 0.7;
+}
+.tagOptions .clearTags {
+  border-color: transparent;
+  color: var(--coding-muted);
+}
+.tagOptions .clearTags:hover {
+  color: var(--coding-ink);
+  background: var(--coding-wash);
+}
+@media (max-width: 760px) {
+  .tagOptions button,
+  .clearTags {
+    min-height: 40px;
+  }
 }
 .cardGrid {
   display: grid;
@@ -800,6 +832,9 @@
     width: 38px;
     height: 38px;
   }
+  .brandDivider {
+    height: 22px;
+  }
   .main {
     margin-left: 190px;
     padding: 30px;
@@ -847,6 +882,9 @@
   .brand span {
     font-size: 17px;
     letter-spacing: -0.4px;
+  }
+  .brandDivider {
+    height: 20px;
   }
   .github {
     grid-column: 2;

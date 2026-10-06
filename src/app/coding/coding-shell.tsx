@@ -3,6 +3,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import {
   codingCategories,
   codingListHref,
+  normalizeCodingTags,
   type CodingCategory,
 } from "@/lib/coding";
 import { CodingIcon } from "./coding-icons";
@@ -21,9 +22,10 @@ export function CodingShell({
         본문으로 바로가기
       </a>
       <aside className={styles.sidebar}>
-        <Link href="/coding" className={styles.brand} aria-label="Coding 홈">
+        <Link href="/" className={styles.brand} aria-label="메인 홈페이지로">
           <BrandLogo size={44} alt="" />
-          <span>| Coding</span>
+          <span className={styles.brandDivider} aria-hidden="true" />
+          <span>Coding</span>
         </Link>
         <nav className={styles.navigation} aria-label="코딩 자료 분류">
           <Link
@@ -75,16 +77,30 @@ export function CodingEmptyState({
   kind,
   query,
   tag,
+  tags,
   category,
   noPosts,
 }: {
   kind: "empty" | "search" | "missing";
   query?: string;
   tag?: string;
+  tags?: readonly string[];
   category?: CodingCategory;
   noPosts?: boolean;
 }) {
   const Heading = kind === "missing" ? "h1" : "h2";
+  const selectedTags = normalizeCodingTags([
+    ...(tag ? [tag] : []),
+    ...(tags ?? []),
+  ]);
+  const tagDescription = selectedTags.map((tag) => `#${tag}`).join(", ");
+  const searchDescription = query
+    ? selectedTags.length
+      ? `${tagDescription} 태그에서 “${query}”에 해당하는 기록이 없습니다. 다른 검색어나 태그로 다시 찾아보세요.`
+      : `“${query}”에 해당하는 기록이 없습니다. 다른 검색어로 다시 찾아보세요.`
+    : selectedTags.length
+      ? `${tagDescription} 태그가 ${selectedTags.length > 1 ? "모두 " : ""}붙은 기록이 없습니다. 다른 태그로 찾아보세요.`
+      : "조건에 맞는 기록이 없습니다. 검색어나 태그를 다시 확인해 주세요.";
   return (
     <div className={styles.emptyState} role="status">
       <div className={styles.emptyIcon}>
@@ -101,9 +117,7 @@ export function CodingEmptyState({
         {kind === "search"
           ? noPosts
             ? "아직 등록된 자료가 없어 검색할 수 없습니다. 새로운 기록을 기다려 주세요."
-            : query
-              ? `“${query}”에 해당하는 기록이 없습니다. 다른 검색어로 다시 찾아보세요.`
-              : `#${tag} 태그가 붙은 기록이 없습니다. 다른 태그로 찾아보세요.`
+            : searchDescription
           : kind === "missing"
             ? "주소를 다시 확인하거나 전체 기록에서 찾아보세요."
             : "배우고 경험한 내용을 정리하고 있어요. 곧 새로운 기록으로 만나요."}
@@ -111,7 +125,7 @@ export function CodingEmptyState({
       {kind === "search" && query && (
         <Link
           className={styles.emptyAction}
-          href={codingListHref({ category, tag })}
+          href={codingListHref({ category, tags: selectedTags })}
           scroll={false}
         >
           검색어 지우기 <span aria-hidden="true">×</span>

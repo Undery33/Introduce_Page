@@ -2,14 +2,22 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 import {
   codingListHref,
   filterCodingPosts,
   getCodingCategory,
+  getCodingTags,
   normalizeCodingQuery,
+  normalizeCodingTags,
   type CodingCategory,
   type CodingPost,
 } from "@/lib/coding";
+import {
+  changeCodingSearchInput,
+  createCodingSearchState,
+  syncCodingSearchUrl,
+} from "@/lib/coding-search-state";
 import { CodingIcon } from "./coding-icons";
 import { CodingEmptyState, CodingShell } from "./coding-shell";
 import { CodingUpdated } from "./coding-updated";
@@ -20,11 +28,13 @@ export function CodingCard({
   compact = false,
   category,
   query,
+  selectedTags = [],
 }: {
   post: CodingPost;
   compact?: boolean;
   category?: CodingCategory;
   query?: string;
+  selectedTags?: readonly string[];
 }) {
   const postCategory = getCodingCategory(post.category);
   return (
@@ -48,7 +58,11 @@ export function CodingCard({
           {post.tags.slice(0, 3).map((tag) => (
             <Link
               key={tag}
-              href={codingListHref({ category, query, tag })}
+              href={codingListHref({
+                category,
+                query,
+                tags: [...selectedTags, tag],
+              })}
               scroll={false}
               aria-label={`${tag} 태그로 필터링`}
             >
@@ -69,28 +83,51 @@ export function CodingCard({
 
 export function CodingIndex({ posts }: { posts: readonly CodingPost[] }) {
   const searchParams = useSearchParams();
-  const rawQuery = searchParams.get("q") ?? "";
-  const query = normalizeCodingQuery(rawQuery);
-  const tag = normalizeCodingQuery(searchParams.get("tag") ?? "");
+  const urlSearch = searchParams.toString();
+  const [searchState, setSearchState] = useState(() =>
+    createCodingSearchState(urlSearch),
+  );
+  // Restore external navigation without letting a delayed URL acknowledgment
+  // overwrite the locally controlled value. The input element stays mounted.
+  if (searchState.urlSearch !== urlSearch) {
+    setSearchState(syncCodingSearchUrl(searchState, urlSearch));
+  }
+  const query = normalizeCodingQuery(searchState.value);
+  const tags = normalizeCodingTags(searchParams.getAll("tag"));
   const category = getCodingCategory(searchParams.get("category") ?? "");
+  const representativeTags = getCodingTags(posts, { category: category?.id });
+  const availableTags = normalizeCodingTags([...representativeTags, ...tags]);
   const results = filterCodingPosts(posts, {
     query,
-    tag,
+    tags,
     category: category?.id,
   });
   const recent = filterCodingPosts(posts, {}).slice(0, 4);
 
-  function updateQuery(value: string) {
-    // Keep the raw input (including spaces and Korean composition) in the URL;
-    // filtering normalizes it separately, without a round trip or debounce.
-    const params = new URLSearchParams(searchParams.toString());
-    if (value) params.set("q", value);
-    else params.delete("q");
-    const suffix = params.toString();
-    window.history.replaceState(
+  function updateQuery(value: string, composing = searchState.composing) {
+    const next = changeCodingSearchInput(searchState, value, composing);
+    setSearchState(next);
+    if (next.pendingSearches !== searchState.pendingSearches) {
+      const suffix = next.pendingSearches.at(-1);
+      window.history.replaceState(
+        null,
+        "",
+        suffix ? `/coding?${suffix}` : "/coding",
+      );
+    }
+  }
+
+  function toggleTag(tag: string) {
+    const selected = tags.some(
+      (value) => value.toLowerCase() === tag.toLowerCase(),
+    );
+    const nextTags = selected
+      ? tags.filter((value) => value.toLowerCase() !== tag.toLowerCase())
+      : [...tags, tag];
+    window.history.pushState(
       null,
       "",
-      suffix ? `/coding?${suffix}` : "/coding",
+      codingListHref({ category: category?.id, query, tags: nextTags }),
     );
   }
   return (
@@ -133,9 +170,9 @@ export function CodingIndex({ posts }: { posts: readonly CodingPost[] }) {
                 {category ? (
                   <Link
                     className={styles.headingLink}
-                    href="/"
-                    aria-label={`${category.label} · 메인 홈페이지로`}
-                    title="메인 홈페이지로 돌아가기"
+                    href="/coding"
+                    aria-label={`${category.label} · Coding HOME으로`}
+                    title="Coding HOME으로 돌아가기"
                   >
                     {category.label}
                     <CodingIcon name="arrow" />
@@ -167,14 +204,28 @@ export function CodingIndex({ posts }: { posts: readonly CodingPost[] }) {
               {category && (
                 <input type="hidden" name="category" value={category.id} />
               )}
-              {tag && <input type="hidden" name="tag" value={tag} />}
+              {tags.map((tag) => (
+                <input key={tag} type="hidden" name="tag" value={tag} />
+              ))}
               <input
                 id="coding-search"
                 name="q"
                 type="search"
                 maxLength={100}
-                value={rawQuery}
-                onChange={(event) => updateQuery(event.target.value)}
+                value={searchState.value}
+                onChange={(event) =>
+                  updateQuery(
+                    event.target.value,
+                    searchState.composing ||
+                      (event.nativeEvent as InputEvent).isComposing,
+                  )
+                }
+                onCompositionStart={() =>
+                  setSearchState((state) => ({ ...state, composing: true }))
+                }
+                onCompositionEnd={(event) =>
+                  updateQuery(event.currentTarget.value, false)
+                }
                 placeholder="어떤 기술이 궁금한가요?"
                 autoComplete="off"
               />
@@ -183,28 +234,49 @@ export function CodingIndex({ posts }: { posts: readonly CodingPost[] }) {
               </button>
             </form>
           </div>
-          {tag && (
-            <div className={styles.activeTag}>
-              <span>
-                선택한 태그 <strong>#{tag}</strong>
-              </span>
-              <Link
-                href={codingListHref({ category: category?.id, query })}
-                scroll={false}
-                aria-label="태그 필터 지우기"
+          {availableTags.length > 0 && (
+            <div className={styles.tagFilters}>
+              <div
+                className={styles.tagOptions}
+                role="group"
+                aria-label="태그 필터, 여러 개 선택 가능"
               >
-                태그 지우기 <span aria-hidden="true">×</span>
-              </Link>
+                {availableTags.map((tag) => {
+                  const selected = tags.some(
+                    (value) => value.toLowerCase() === tag.toLowerCase(),
+                  );
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleTag(tag)}
+                    >
+                      <span aria-hidden="true">{selected ? "✓" : "#"}</span>
+                      {tag}
+                    </button>
+                  );
+                })}
+                {tags.length > 0 && (
+                  <Link
+                    className={styles.clearTags}
+                    href={codingListHref({ category: category?.id, query })}
+                    scroll={false}
+                  >
+                    선택 해제 ×
+                  </Link>
+                )}
+              </div>
             </div>
           )}
-          {(query || tag || results.length > 0) && (
+          {(query || tags.length > 0 || results.length > 0) && (
             <div className={styles.resultSummary}>
               <p role="status" aria-live="polite" aria-atomic="true">
                 {query ? (
                   <>
                     “<strong>{query}</strong>” 검색 결과
                   </>
-                ) : tag ? (
+                ) : tags.length > 0 ? (
                   "태그 검색 결과"
                 ) : (
                   "전체 기록"
@@ -213,7 +285,7 @@ export function CodingIndex({ posts }: { posts: readonly CodingPost[] }) {
               </p>
               {query && results.length > 0 && (
                 <Link
-                  href={codingListHref({ category: category?.id, tag })}
+                  href={codingListHref({ category: category?.id, tags })}
                   scroll={false}
                 >
                   검색어 지우기 ×
@@ -229,14 +301,15 @@ export function CodingIndex({ posts }: { posts: readonly CodingPost[] }) {
                   post={post}
                   category={category?.id}
                   query={query}
+                  selectedTags={tags}
                 />
               ))}
             </div>
           ) : (
             <CodingEmptyState
-              kind={query || tag ? "search" : "empty"}
+              kind={query || tags.length > 0 ? "search" : "empty"}
               query={query}
-              tag={tag}
+              tags={tags}
               category={category?.id}
               noPosts={posts.length === 0}
             />

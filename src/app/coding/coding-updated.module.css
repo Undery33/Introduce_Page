@@ -1,31 +1,12 @@
 .timestamp {
   display: inline-flex;
-  flex-direction: column;
   align-items: flex-end;
-  gap: 5px;
   min-width: 0;
   max-width: 100%;
   margin-left: auto;
   color: #626a75;
   text-align: right;
   line-height: 1.5;
-}
-
-.label {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 3px 7px;
-  font-size: 10px;
-}
-
-.label > span {
-  white-space: nowrap;
-}
-
-.exampleLabel {
-  font-weight: 550;
-  color: #59677a;
 }
 
 .timestamp time {
@@ -35,18 +16,6 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   white-space: nowrap;
-}
-
-.unavailable {
-  font-size: 12px;
-}
-
-.compact {
-  gap: 3px;
-}
-
-.compact .label {
-  font-size: 9px;
 }
 
 .compact time {

@@ -25,20 +25,16 @@ export function CodingUpdated({
   compact?: boolean;
 }) {
   const date = formatCodingDate(post.updatedAt);
+  if (!date) return null;
 
   return (
     <span className={`${styles.timestamp} ${compact ? styles.compact : ""}`}>
-      <span className={styles.label}>
-        <span>{compact ? "업데이트" : "마지막 업데이트"}</span>
-        {post.isExample && (
-          <span className={styles.exampleLabel}>예시 날짜</span>
-        )}
-      </span>
-      {date ? (
-        <time dateTime={post.updatedAt}>{date}</time>
-      ) : (
-        <span className={styles.unavailable}>날짜 미정</span>
-      )}
+      <time
+        dateTime={post.updatedAt}
+        aria-label={`${post.isExample ? "예시 날짜 · " : ""}마지막 업데이트 ${date}`}
+      >
+        {date}
+      </time>
     </span>
   );
 }

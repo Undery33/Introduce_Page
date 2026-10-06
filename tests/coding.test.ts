@@ -5,7 +5,9 @@ import {
   codingListHref,
   filterCodingPosts,
   getCodingCategory,
+  getCodingTags,
   normalizeCodingQuery,
+  normalizeCodingTags,
   type CodingPost,
 } from "../src/lib/coding";
 import {
@@ -254,6 +256,80 @@ test("tag filtering matches complete normalized tags rather than text or substri
   );
 });
 
+test("selected tags normalize and deduplicate without losing display labels or order", () => {
+  assert.deepEqual(normalizeCodingTags(), []);
+  assert.deepEqual(normalizeCodingTags(" DNS "), ["DNS"]);
+  assert.deepEqual(
+    normalizeCodingTags([
+      " DNS ",
+      "dns",
+      "",
+      " \u1100\u1161\u11a8 ",
+      "각",
+      "Ubuntu",
+      "ubuntu",
+    ]),
+    ["DNS", "각", "Ubuntu"],
+  );
+  assert.deepEqual(normalizeCodingTags(["   ", ""]), []);
+});
+
+test("multiple selected tags require all matches together with the query and category", () => {
+  const posts = [
+    post("all", { title: "Ubuntu 설정", tags: ["DNS", "Linux", "Ubuntu"] }),
+    post("dns-only", { title: "Ubuntu 설정", tags: ["DNS"] }),
+    post("linux-only", { title: "Ubuntu 설정", tags: ["Linux"] }),
+    post("other-query", { title: "Rocky 설정", tags: ["DNS", "Linux"] }),
+    post("other-category", {
+      title: "Ubuntu 설정",
+      tags: ["DNS", "Linux"],
+      category: "network",
+    }),
+  ];
+  const filters = {
+    category: "infrastructure" as const,
+    query: "ubuntu",
+    tags: [" dns ", "LINUX", "DNS"],
+  };
+  assert.deepEqual(slugs(filterCodingPosts(posts, filters)), ["all"]);
+  assert.deepEqual(
+    slugs(
+      filterCodingPosts(posts, {
+        category: "infrastructure",
+        query: "ubuntu",
+        tag: "DNS",
+        tags: ["Linux"],
+      }),
+    ),
+    ["all"],
+  );
+  assert.deepEqual(
+    filterCodingPosts(posts, { ...filters, tags: ["DNS", "unmatched"] }),
+    [],
+  );
+  assert.deepEqual(
+    filterCodingPosts(posts, { tags: [] }),
+    filterCodingPosts(posts),
+  );
+});
+
+test("representative tags come from the full category and are normalized, unique, and sorted", () => {
+  const posts = Object.freeze([
+    post("ubuntu", { tags: ["Ubuntu", "DNS", "Linux", ""] }),
+    post("rocky", { tags: ["linux", " dns "] }),
+    post("network", { tags: ["HTTPS"], category: "network" }),
+  ]);
+  assert.deepEqual(getCodingTags(posts, { category: "infrastructure" }), [
+    "DNS",
+    "Linux",
+    "Ubuntu",
+  ]);
+  assert.deepEqual(getCodingTags(posts), ["DNS", "HTTPS", "Linux", "Ubuntu"]);
+  assert.deepEqual(getCodingTags(posts, { category: "frontend" }), []);
+  assert.deepEqual(getCodingTags([]), []);
+  assert.deepEqual(posts[0].tags, ["Ubuntu", "DNS", "Linux", ""]);
+});
+
 test("category, search query, and tag filters must all match", () => {
   const posts = [
     post("match", { title: "Ubuntu 조회", tags: ["Linux", "DNS"] }),
@@ -386,4 +462,32 @@ test("tag URLs retain category and search while normalizing and safely encoding 
   assert.equal(url.searchParams.get("tag"), "각 & q=changed # C++ /?");
   assert.equal(url.searchParams.size, 3);
   assert.equal(url.hash, "");
+});
+
+test("multiple tag URLs use repeated parameters and round-trip without duplicates or injected fields", () => {
+  const url = new URL(
+    codingListHref({
+      category: "infrastructure",
+      query: "Ubuntu DNS",
+      tag: "DNS",
+      tags: ["dns", " Ubuntu ", "\u1100\u1161\u11a8", "각", "C++ & q=changed#"],
+    }),
+    "https://example.test",
+  );
+  assert.equal(url.pathname, "/coding");
+  assert.equal(url.searchParams.get("category"), "infrastructure");
+  assert.equal(url.searchParams.get("q"), "Ubuntu DNS");
+  assert.deepEqual(url.searchParams.getAll("tag"), [
+    "DNS",
+    "Ubuntu",
+    "각",
+    "C++ & q=changed#",
+  ]);
+  assert.equal(url.searchParams.size, 6);
+  assert.equal(url.hash, "");
+  assert.equal(
+    codingListHref({ tags: ["DNS", "Ubuntu"] }),
+    "/coding?tag=DNS&tag=Ubuntu",
+  );
+  assert.equal(codingListHref({ tags: [" ", ""] }), "/coding");
 });

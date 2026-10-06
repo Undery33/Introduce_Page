@@ -47,6 +47,7 @@ type CodingFilters = {
   category?: CodingCategory;
   query?: string;
   tag?: string;
+  tags?: readonly string[];
 };
 
 function firstValue(value?: string | string[]): string {
@@ -66,6 +67,36 @@ export function normalizeCodingQuery(value?: string | string[]): string {
     .trim();
 }
 
+export function normalizeCodingTags(
+  value?: string | readonly string[],
+): string[] {
+  const values = typeof value === "string" ? [value] : (value ?? []);
+  const seen = new Set<string>();
+  const tags: string[] = [];
+
+  for (const value of values) {
+    const tag = normalizeCodingQuery(value);
+    const key = tag.toLowerCase();
+    if (!tag || seen.has(key)) continue;
+    seen.add(key);
+    tags.push(tag);
+  }
+
+  return tags;
+}
+
+export function getCodingTags(
+  posts: readonly CodingPost[],
+  { category }: Pick<CodingFilters, "category"> = {},
+): string[] {
+  const tags = posts
+    .filter((post) => !category || post.category === category)
+    .flatMap((post) => post.tags);
+  return normalizeCodingTags(tags).sort((a, b) =>
+    a.localeCompare(b, "ko", { sensitivity: "base" }),
+  );
+}
+
 function updatedTimestamp(post: CodingPost): number {
   const timestamp = Date.parse(post.updatedAt);
   return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp;
@@ -73,23 +104,23 @@ function updatedTimestamp(post: CodingPost): number {
 
 export function filterCodingPosts(
   posts: readonly CodingPost[],
-  { category, query, tag }: CodingFilters = {},
+  { category, query, tag, tags }: CodingFilters = {},
 ): CodingPost[] {
   const normalizedQuery = normalizeCodingQuery(query).toLowerCase();
-  const normalizedTag = normalizeCodingQuery(tag).toLowerCase();
+  const normalizedTags = normalizeCodingTags([
+    ...(tag ? [tag] : []),
+    ...(tags ?? []),
+  ]).map((tag) => tag.toLowerCase());
   const matchWordPrefix = /^[a-z]$/.test(normalizedQuery);
 
   return posts
     .filter((post) => {
       if (category && post.category !== category) return false;
-      if (
-        normalizedTag &&
-        !post.tags.some(
-          (value) =>
-            normalizeCodingQuery(value).toLowerCase() === normalizedTag,
-        )
-      ) {
-        return false;
+      if (normalizedTags.length) {
+        const postTags = new Set(
+          normalizeCodingTags(post.tags).map((tag) => tag.toLowerCase()),
+        );
+        if (!normalizedTags.every((tag) => postTags.has(tag))) return false;
       }
       if (!normalizedQuery) return true;
 
@@ -130,15 +161,19 @@ export function codingListHref({
   category,
   query,
   tag,
+  tags,
 }: CodingFilters = {}): string {
   const params = new URLSearchParams();
   const selectedCategory = getCodingCategory(category);
   const normalizedQuery = normalizeCodingQuery(query);
-  const normalizedTag = normalizeCodingQuery(tag);
+  const normalizedTags = normalizeCodingTags([
+    ...(tag ? [tag] : []),
+    ...(tags ?? []),
+  ]);
 
   if (selectedCategory) params.set("category", selectedCategory.id);
   if (normalizedQuery) params.set("q", normalizedQuery);
-  if (normalizedTag) params.set("tag", normalizedTag);
+  for (const tag of normalizedTags) params.append("tag", tag);
 
   const search = params.toString();
   return search ? `/coding?${search}` : "/coding";

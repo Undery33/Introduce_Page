@@ -55,7 +55,8 @@ function assertCodingArchive(html, path) {
   const params = new URL(path, origin).searchParams;
   const category = params.get("category");
   const query = params.get("q") || "";
-  const tag = params.get("tag");
+  const tags = params.getAll("tag");
+  const tag = tags[0];
   assert.match(markup, /<main\b[^>]*\bid="coding-content"[^>]*>/);
   const sidebar = markup.match(/<aside\b[^>]*>([\s\S]*?)<\/aside>/)?.[1];
   assert.ok(sidebar, `${path}: coding sidebar exists`);
@@ -63,14 +64,21 @@ function assertCodingArchive(html, path) {
     ([anchor]) => /<img\b/.test(anchor),
   )?.[0];
   assert.ok(brand, `${path}: existing brand image remains visible`);
-  assert.match(brand, /\bhref="\/coding"/);
+  assert.match(brand, /\bhref="\/"/);
   assert.match(
     brand.replace(/<!--[\s\S]*?-->|<[^>]*>/g, " "),
-    /\|\s*Coding/,
+    /Coding/,
     `${path}: Coding label appears beside the logo`,
   );
+  assert.doesNotMatch(brand, /\|/);
+  assert.match(brand, /<span\b[^>]*\baria-hidden="true"[^>]*><\/span>/);
   const rootLinks = [...markup.matchAll(/<a\b[^>]*\bhref="\/"[^>]*>/g)];
-  let rootHeadingLink;
+  assert.equal(
+    rootLinks.length,
+    1,
+    `${path}: only the logo links to the homepage`,
+  );
+  let codingHeadingLink;
   if (category) {
     const labels = {
       frontend: "FRONT-END",
@@ -84,20 +92,15 @@ function assertCodingArchive(html, path) {
       /<h1\b[^>]*\bid="coding-heading"[^>]*>([\s\S]*?)<\/h1>/,
     )?.[1];
     assert.ok(heading, `${path}: category heading exists`);
-    rootHeadingLink = heading.match(/<a\b[^>]*\bhref="\/"[^>]*>/)?.[0];
-    assert.ok(rootHeadingLink, `${path}: category title links to the homepage`);
+    codingHeadingLink = heading.match(/<a\b[^>]*\bhref="\/coding"[^>]*>/)?.[0];
     assert.ok(
-      rootHeadingLink.includes(`aria-label="${label} · 메인 홈페이지로"`),
+      codingHeadingLink,
+      `${path}: category title links to Coding HOME`,
+    );
+    assert.ok(
+      codingHeadingLink.includes(`aria-label="${label} · Coding HOME으로"`),
       `${path}: category homepage link has a descriptive name`,
     );
-    assert.equal(
-      rootLinks.length,
-      1,
-      `${path}: only the category title links home`,
-    );
-    assert.equal(rootLinks[0][0], rootHeadingLink);
-  } else {
-    assert.equal(rootLinks.length, 0, `${path}: no additional homepage links`);
   }
   assert.ok(
     markup.includes(
@@ -145,16 +148,18 @@ function assertCodingArchive(html, path) {
   } else {
     assert.equal(categoryInput, undefined);
   }
-  const tagInput = [...search.matchAll(/<input\b[^>]*>/g)].find(([field]) =>
+  const tagInputs = [...search.matchAll(/<input\b[^>]*>/g)].filter(([field]) =>
     /\bname="tag"/.test(field),
-  )?.[0];
+  );
+  assert.equal(tagInputs.length, tags.length);
   if (tag) {
-    assert.ok(tagInput, `${path}: tag persists on search`);
-    assert.match(tagInput, /\btype="hidden"/);
-    assert.ok(tagInput.includes(`value="${tag}"`));
+    for (const [index, [tagInput]] of tagInputs.entries()) {
+      assert.match(tagInput, /\btype="hidden"/);
+      assert.ok(tagInput.includes(`value="${tags[index]}"`));
+    }
     const clearTagLinks = [
-      ...markup.matchAll(/<a\b[^>]*\baria-label="태그 필터 지우기"[^>]*>/g),
-    ];
+      ...markup.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/g),
+    ].filter(([anchor]) => anchor.includes("선택 해제"));
     assert.equal(clearTagLinks.length, 1, `${path}: tag can be cleared`);
     const clearTagHref = clearTagLinks[0][0].match(/\bhref="([^"]+)"/)?.[1];
     assert.ok(clearTagHref);
@@ -163,8 +168,6 @@ function assertCodingArchive(html, path) {
     assert.equal(clearTagUrl.searchParams.get("category"), category);
     assert.equal(clearTagUrl.searchParams.get("q") || "", query);
     assert.equal(clearTagUrl.searchParams.get("tag"), null);
-  } else {
-    assert.equal(tagInput, undefined);
   }
   const activeLinks = [...markup.matchAll(/<a\b[^>]*>/g)].filter(([anchor]) =>
     /\baria-current="page"/.test(anchor),
@@ -186,11 +189,13 @@ function assertCodingArchive(html, path) {
       const clearUrl = new URL(clearHref.replaceAll("&amp;", "&"), origin);
       assert.equal(clearUrl.pathname, "/coding");
       assert.equal(clearUrl.searchParams.get("category"), category);
-      assert.equal(clearUrl.searchParams.get("tag"), tag);
+      assert.deepEqual(clearUrl.searchParams.getAll("tag"), tags);
       assert.equal(clearUrl.searchParams.get("q"), null);
     }
   }
-  return rootHeadingLink;
+  const rootLogoLink = brand.match(/<a\b[^>]*>/)?.[0];
+  assert.equal(rootLinks[0][0], rootLogoLink);
+  return rootLogoLink;
 }
 try {
   let ready = false;
@@ -249,6 +254,7 @@ try {
     "/coding?q=test&category=network",
     "/coding?tag=DNS",
     "/coding?category=infrastructure&q=Ubuntu&tag=DNS",
+    "/coding?category=infrastructure&q=Ubuntu&tag=DNS&tag=Linux",
     ...["frontend", "backend", "infrastructure", "network"].map(
       (category) => `/coding?category=${category}`,
     ),
@@ -270,7 +276,7 @@ try {
         `<link rel="canonical" href="https://undery.link${path.split("?")[0]}"`,
       ),
     );
-    const rootHeadingLink =
+    const rootLogoLink =
       section === "coding" ? assertCodingArchive(html, path) : undefined;
     if (path === "/game") {
       const choices = [...html.matchAll(/<a\b[^>]*data-game="([^"]+)"[^>]*>/g)];
@@ -369,8 +375,8 @@ try {
         href.startsWith("/images/vrchat/")
       )
         continue;
-      // The user-authorized homepage exit is only the category title above.
-      if (href === "/" && anchor === rootHeadingLink) continue;
+      // The user-authorized homepage exit is only the verified Coding logo.
+      if (href === "/" && anchor === rootLogoLink) continue;
       assert.ok(
         href === `/${section}` ||
           href.startsWith(`/${section}/`) ||
