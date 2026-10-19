@@ -1,5 +1,7 @@
 import { pageMetadata } from "@/lib/metadata";
 import { PhotoGallery } from "./photo-gallery";
+import { getVrchatPhotos } from "@/lib/vrchat-store";
+export const dynamic = "force-dynamic";
 
 export const metadata = pageMetadata(
   "PHOTO",
@@ -7,6 +9,6 @@ export const metadata = pageMetadata(
   "/game/vrchat/photo",
 );
 
-export default function VrchatPhotoPage() {
-  return <PhotoGallery />;
+export default async function VrchatPhotoPage() {
+  return <PhotoGallery photos={await getVrchatPhotos()} />;
 }

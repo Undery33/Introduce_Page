@@ -243,3 +243,34 @@ model AdminLoginAttempt {
 
   @@index([expiresAt])
 }
+
+// Image bytes live outside releases. Unpublished images require an admin session.
+model UploadedImage {
+  id        String   @id
+  width     Int
+  height    Int
+  bytes     Int
+  createdAt DateTime @default(now())
+  icons     CustomIcon[]
+}
+
+model CustomIcon {
+  id        String        @id @default(cuid())
+  label     String
+  imageId   String
+  image     UploadedImage @relation(fields: [imageId], references: [id], onDelete: Restrict)
+  createdAt DateTime      @default(now())
+}
+
+// Editing a photo never modifies its public snapshot until publication.
+model VrchatPhoto {
+  id               String            @id @default(cuid())
+  legacySrc        String?           @unique
+  draft            Json
+  published        Json?
+  status           PublicationStatus @default(DRAFT)
+  version          Int               @default(1)
+  publishedVersion Int?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}

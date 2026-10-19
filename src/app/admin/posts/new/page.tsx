@@ -1,3 +1,4 @@
+import { customIcons } from "@/lib/admin/images";
 import { randomUUID } from "node:crypto";
 import { requireAdminPage } from "@/lib/admin/session";
 import { PostEditor } from "../../post-editor";
@@ -5,6 +6,7 @@ export default async function NewPostPage() {
   const session = await requireAdminPage();
   return (
     <PostEditor
+      icons={await customIcons()}
       csrfToken={session.csrfToken}
       initial={{
         slug: `post-${randomUUID().slice(0, 8)}`,

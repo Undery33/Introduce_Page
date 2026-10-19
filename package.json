@@ -21,13 +21,15 @@
     "format:check": "prettier --check src tests scripts *.ts *.mjs package.json tsconfig.json compose.yaml docs",
     "postinstall": "prisma generate",
     "test:admin": "node --import tsx --test --test-isolation=none tests/admin*.test.ts",
-    "test:admin:db": "node --import tsx --test --test-isolation=none tests/integration/admin-database.test.ts"
+    "test:admin:db": "node --import tsx --test --test-isolation=none tests/integration/admin-database.test.ts",
+    "test:admin:media": "node --import tsx --test --test-isolation=none tests/integration/media-http.test.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
     "next": "16.3.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sharp": "0.35.4"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

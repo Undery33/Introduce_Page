@@ -4,20 +4,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import {
-  archivePhotos,
+  type ArchivePhoto,
   filterPhotos,
   getPhotoMonths,
   photoTags,
 } from "@/lib/vrchat-photos";
 import styles from "./photo-gallery.module.css";
 
-const months = getPhotoMonths(archivePhotos);
-const hasUndatedPhotos = archivePhotos.some((photo) => photo.month === null);
-
-export function PhotoGallery() {
+export function PhotoGallery({
+  photos: items,
+}: {
+  photos: readonly ArchivePhoto[];
+}) {
+  const months = getPhotoMonths(items);
+  const hasUndatedPhotos = items.some((photo) => photo.month === null);
   const [month, setMonth] = useState("");
   const [tag, setTag] = useState("");
-  const photos = filterPhotos(archivePhotos, { month, tag });
+  const photos = filterPhotos(items, { month, tag });
 
   return (
     <main id="main" className={styles.page}>
@@ -105,6 +108,7 @@ export function PhotoGallery() {
                 <li key={photo.id} className={styles.photo} data-photo-card>
                   <Image
                     src={photo.src}
+                    unoptimized={photo.src.startsWith("/media/")}
                     alt={photo.description}
                     fill
                     sizes="(max-width: 1600px) 29vw, 460px"

@@ -12,6 +12,7 @@ for (const key of [
   "GITHUB_CLIENT_ID",
   "GITHUB_CLIENT_SECRET",
   "ADMIN_GITHUB_ID",
+  "MEDIA_DIRECTORY",
 ])
   smokeEnvironment[key] = "";
 let log = "";
@@ -485,6 +486,27 @@ try {
   await request("/api/auth/logout", 403, { method: "POST" });
   const newPost = await request("/admin/posts/new", 307);
   assert.equal(newPost.headers.get("location"), "/admin");
+  for (const path of [
+    "/api/admin/images",
+    "/api/admin/icons",
+    "/api/admin/photos",
+    "/api/admin/photos/unknown/publish",
+    "/api/admin/photos/unknown/unpublish",
+  ])
+    await request(path, 401, { method: "POST", body: "untrusted" });
+  await request("/api/admin/photos/unknown", 401, {
+    method: "PUT",
+    body: "untrusted",
+  });
+  for (const path of [
+    "/admin/photos",
+    "/admin/photos/new",
+    "/admin/photos/unknown",
+  ]) {
+    const response = await request(path, 307);
+    assert.equal(response.headers.get("location"), "/admin");
+  }
+  await request("/media/00000000000000000000000000000000.webp", 404);
   for (const path of ["/api/comments", "/api/upload"])
     await request(path, 404, {
       method: "POST",

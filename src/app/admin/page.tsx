@@ -95,6 +95,9 @@ export default async function AdminPage({
         href="/admin/posts/new"
       >
         새 글 작성
+      </Link>{" "}
+      <Link className={styles.button} href="/admin/photos">
+        VRChat 사진 관리
       </Link>
       <section className={styles.panel}>
         {drafts.length === 0 ? (

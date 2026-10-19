@@ -1,5 +1,17 @@
 # 기반 구현 검증 기록
 
+## 2026-10-19 — 사용자 아이콘·본문 이미지·VRChat 사진 관리
+
+- 기존 공개 글의 챕터는 이미 `?section=<id>`와 이전·다음 링크로 이동한다. 실제 CodingArticle 컴포넌트를 서버 렌더링해 첫·중간·마지막 챕터에서 해당 본문만 표시되고 이전·다음 URL과 버튼 조건이 맞는지 확인했다. 잘못된 section의 첫 챕터 복귀도 통과했다.
+- 사용자 아이콘의 이미지·이름 등록과 재선택, 본문 드래그/선택/붙여넣기 이미지 업로드와 본문 안 표시를 추가했다. 기존 Markdown 저장과 공개 스냅샷 구조는 유지한다.
+- VRChat 사진 추가·교체·설명·월·태그·순서·공개/비공개와 기존 여섯 사진의 편집을 구현했다. 새 초안과 공개본을 분리하며 공개 자료만 두 VRChat 페이지에 전달한다. 최초 기존 사진 수정도 발행 전까지 원래 사진을 유지하도록 작성했다.
+- Sharp 0.35.4는 기존 Next 의존성에 있던 정확한 버전을 직접 의존성으로 선언했다. 파일 시그니처·실제 스트림 크기·디코딩을 검사한다. EXIF 방향 적용, 메타데이터 제거, WebP 변환, 투명도 보존을 실제 픽셀 데이터로 검사했다.
+- 별도 `/tmp/undery-media-verify-...` 검증 checkout에서 npm run check 통과: ESLint, TypeScript, 52개 단위/handler 검사, Prisma 스키마 검사. 이후 실제 챕터 렌더 검사 추가 후 전체 단위 검사 53개 통과. BUILD_COMMIT=admin-media-local 프로덕션 standalone 빌드 통과. 원본 checkout의 src/prisma 파일과 검증 빌드 입력이 동일함을 대조했다.
+- Python 배포 보호/복구 검사 5개와 스크립트 구문 검사를 통과했다. 새 배포 manifest는 첫 관리자 release를 기준으로 소스를 고정한다. 시험 DB migration·글 DB 검사·인증 미디어 HTTP 검사·운영 dump 복원 및 복원 DB migration이 성공해야 운영 migration/서비스 전환을 진행한다.
+- 제한 환경에서 새 빌드의 npm run test:smoke를 실행했으나 서버 시작이 차단됐다. 직접 standalone 실행으로 `listen EPERM 127.0.0.1:3101`을 확인했다. 이 버전의 실제 HTTP·DB·배포 통과를 주장하지 않는다. 이전 버전의 사용자 보고 PASS 68은 이번 변경의 HTTP 검증으로 재사용하지 않는다.
+- tests/integration/media-http.test.ts는 별도 *_test DB와 임시 미디어 디렉터리에서 인증된 업로드, 변조 Origin/CSRF, 초안 이미지 비공개, 아이콘 재사용, 실제 챕터 HTTP, VRChat 신규/기존 사진의 초안·교체·공개·중지, 로그아웃을 검사하도록 준비했다. 운영에서는 실제 GitHub 세션을 유지하며 시험 세션을 추가하지 않는다.
+- 남은 확인: 서버 root 터미널에서 MEDIA.md의 배포 실행, 새 버전의 시험 DB/HTTP 검사 결과, 브라우저의 드래그·파일 선택·한글 편집과 저장/공개. 이 세션에서 운영 DB migration·웹 재시작·실제 사용자 사진 업로드는 수행하지 않았다.
+
 ## 2026-10-19 — 운영 release 전환과 사용자 로그인 확인
 
 - 서버 파일 읽기로 `/opt/personal-site/web/current`가 `/opt/personal-site/web/releases/9378c630d1a6049bdc38c64e91ada63d796b46a5-admin-20261019T134814443732Z`를 가리키는 것을 확인했다. 관리자 앱의 실제 배포 버전은 `9378c630`이며 후속 배포 도구·문서 커밋과 구분한다.

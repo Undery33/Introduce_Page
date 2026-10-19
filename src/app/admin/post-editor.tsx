@@ -5,33 +5,39 @@ import { useEffect, useState } from "react";
 import { MarkdownContent } from "@/components/markdown-content";
 import { codingCategories } from "@/lib/coding";
 import type { EditorDocument, PostInput } from "@/lib/admin/post-input";
+import { MarkdownEditor } from "./markdown-editor";
+import { IconPicker } from "./icon-picker";
+import type { IconOption } from "@/lib/media";
 import styles from "./admin.module.css";
 
 type Document = PostInput & Partial<Omit<EditorDocument, keyof PostInput>>;
 export function PostEditor({
   initial,
   csrfToken,
+  icons,
 }: {
   initial: Document;
   csrfToken: string;
+  icons: IconOption[];
 }) {
   const [document, setDocument] = useState<Document>(initial);
   const [tagText, setTagText] = useState(initial.tags.join(", "));
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [preview, setPreview] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
     const preventLoss = (event: BeforeUnloadEvent) => {
-      if (dirty) {
+      if (dirty || uploading) {
         event.preventDefault();
         event.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", preventLoss);
     return () => window.removeEventListener("beforeunload", preventLoss);
-  }, [dirty]);
+  }, [dirty, uploading]);
   function update(change: Partial<Document>) {
     setDocument((current) => ({ ...current, ...change }));
     setDirty(true);
@@ -58,7 +64,7 @@ export function PostEditor({
     return result;
   }
   async function persist(action: "save" | "publish" | "unpublish") {
-    if (busy) return;
+    if (busy || uploading) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -124,27 +130,6 @@ export function PostEditor({
     ];
     update({ sections });
   }
-  function insertText(index: number, value: string) {
-    const area = window.document.getElementById(
-      `body-${index}`,
-    ) as HTMLTextAreaElement | null;
-    const section = document.sections[index];
-    const start = area?.selectionStart ?? section.markdown.length;
-    const end = area?.selectionEnd ?? start;
-    const sections = document.sections.map((item, i) =>
-      i === index
-        ? {
-            ...item,
-            markdown:
-              section.markdown.slice(0, start) +
-              value +
-              section.markdown.slice(end),
-          }
-        : item,
-    );
-    update({ sections });
-    area?.focus();
-  }
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -163,7 +148,7 @@ export function PostEditor({
           href="/admin"
           onClick={(event) => {
             if (
-              dirty &&
+              (dirty || uploading) &&
               !window.confirm(
                 "저장하지 않은 변경 사항을 두고 목록으로 이동하시겠습니까?",
               )
@@ -181,7 +166,7 @@ export function PostEditor({
         }}
       >
         <fieldset
-          disabled={busy}
+          disabled={busy || uploading}
           style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}
         >
           <section className={styles.panel} aria-label="글 정보">
@@ -222,27 +207,13 @@ export function PostEditor({
                   ))}
                 </select>
               </label>
-              <label className={styles.field}>
-                아이콘
-                <select
-                  value={document.icon}
-                  onChange={(event) =>
-                    update({ icon: event.target.value as PostInput["icon"] })
-                  }
-                >
-                  {[
-                    ["code", "코드"],
-                    ["server", "서버"],
-                    ["globe", "네트워크"],
-                    ["ubuntu", "Ubuntu"],
-                    ["rocky", "Rocky Linux"],
-                  ].map(([id, name]) => (
-                    <option key={id} value={id}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <IconPicker
+                value={document.icon}
+                onChange={(icon) => update({ icon })}
+                initial={icons}
+                csrfToken={csrfToken}
+                onBusy={setUploading}
+              />
             </div>
             <label className={styles.field}>
               글 주소
@@ -361,53 +332,19 @@ export function PostEditor({
                     }
                   />
                 </label>
-                <div className={styles.actions}>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      insertText(index, "\n```bash\n명령어\n```\n")
-                    }
-                  >
-                    코드 블록
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      insertText(index, "[링크 이름](https://example.com)")
-                    }
-                  >
-                    링크
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      insertText(
-                        index,
-                        "![사진 설명](https://example.com/image.webp)",
-                      )
-                    }
-                  >
-                    이미지 주소
-                  </button>
-                </div>
-                <label className={styles.field}>
-                  본문
-                  <textarea
-                    id={`body-${index}`}
-                    value={section.markdown}
-                    maxLength={100000}
-                    spellCheck={false}
-                    onChange={(event) =>
-                      update({
-                        sections: document.sections.map((item, i) =>
-                          i === index
-                            ? { ...item, markdown: event.target.value }
-                            : item,
-                        ),
-                      })
-                    }
-                  />
-                </label>
+                <MarkdownEditor
+                  disabled={busy || uploading}
+                  value={section.markdown}
+                  csrfToken={csrfToken}
+                  onBusy={setUploading}
+                  onChange={(markdown) =>
+                    update({
+                      sections: document.sections.map((item) =>
+                        item.id === section.id ? { ...item, markdown } : item,
+                      ),
+                    })
+                  }
+                />
               </section>
             ))
           )}
@@ -426,6 +363,11 @@ export function PostEditor({
             >
               챕터 추가
             </button>
+          )}
+          {uploading && (
+            <p role="status" className={styles.status}>
+              이미지를 처리하고 있습니다.
+            </p>
           )}
           {error && (
             <p role="alert" className={styles.error}>

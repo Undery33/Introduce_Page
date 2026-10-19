@@ -1,8 +1,8 @@
 # 실행·운영 전환 안내
 
-2026-10-19 갱신. 루트 안내 200은 이미 구현되었다. 현재 서버 파일에서 `undery-web.service`의 standalone 실행 설정과 `/opt/personal-site/web/current` → `edddc752...` release를 확인했다. 서비스 상태·외부 HTTP는 이번 제한 환경에서 확인하지 못했다.
+2026-10-19 갱신. 루트 안내 200은 이미 구현되었다. 현재 서버 파일에서 `undery-web.service`의 standalone 실행 설정과 `/opt/personal-site/web/current` → `9378c630...-admin-20261019T134814443732Z` release 전환을 확인했고 사용자가 실제 관리자 로그인 성공을 보고했다.
 
-관리자 로그인·DB 글 작성의 설치와 복구는 [관리자 운영 안내](ADMIN.md)를 따른다. 이번 변경은 아직 운영에 적용하지 않았다. 기존 systemd 운영을 유지할 수 있으며 Docker 앱으로 전환할 필요는 없다.
+관리자 로그인·DB 글 작성의 설치와 복구는 [관리자 운영 안내](ADMIN.md)를 따른다. 사용자 아이콘·드래그 이미지·VRChat 사진 관리 후속 변경은 아직 운영에 적용하지 않았다. 해당 전환은 [미디어 사용·배포 안내](MEDIA.md)를 따른다. 기존 systemd 운영을 유지할 수 있으며 Docker 앱으로 전환할 필요는 없다.
 
 ## 현재 운영과 개발 분리
 
@@ -22,7 +22,7 @@ npm run test:smoke # DB/OAuth 없는 별도 시험 프로세스에서 실행
 
 DB는 `database` profile을 선택할 때만 시작한다. 비밀번호는 저장소 밖 파일에서 Compose secret으로 전달한다. 앱 컨테이너를 쓰면 DB 포트는 호스트에 공개하지 않는다. 기존 호스트 systemd 앱을 쓸 때만 별도 host override로 127.0.0.1에 바인딩한다. `/api/health`는 설정된 DB의 공개 글·세션 테이블을 검사하며 실패하면 503을 반환한다. DB 미설정 상태는 `not-connected`, OAuth 미설정은 `not-configured`로 구분한다.
 
-PostgreSQL 볼륨은 앱 이미지와 분리한다. `docker compose down -v`, 자동 시드, `prisma migrate reset`은 운영 배포에서 사용하지 않는다. DB 백업 복원 검증이 끝나기 전 데이터를 받는 기능을 공개하지 않는다.
+PostgreSQL 볼륨과 미디어 파일은 앱 이미지와 분리한다. 미디어 배포 후 DB dump와 `/var/lib/undery-media` 파일을 함께 백업한다. Compose 앱에서는 `media_data` 볼륨을 별도 보관한다. `docker compose down -v`, 자동 시드, `prisma migrate reset`은 운영 배포에서 사용하지 않는다. DB 백업 복원 검증이 끝나기 전 데이터를 받는 기능을 공개하지 않는다.
 
 ## Nginx 전환
 

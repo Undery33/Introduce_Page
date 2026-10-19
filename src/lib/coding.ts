@@ -36,7 +36,8 @@ export type CodingPost = {
   title: string;
   description: string;
   category: CodingCategory;
-  icon: "code" | "server" | "globe" | "ubuntu" | "rocky";
+  icon:
+    "code" | "server" | "globe" | "ubuntu" | "rocky" | `/media/${string}.webp`;
   publishedAt: string;
   updatedAt: string;
   tags: readonly string[];

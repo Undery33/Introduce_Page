@@ -4,7 +4,7 @@
 
 `feature/web`의 `edddc752`를 기준으로 관리자 GitHub OAuth·서버 세션과 Coding 글 작성 기능을 추가했다. `/admin`은 로그인 및 글 관리 화면이며 새 글·목차 Markdown 편집·미리보기·초안 저장·발행·공개 중지를 지원한다. 운영 DB에 연결하면 공개된 글만 기존 Coding 목록/검색/상세/사이트맵에 표시한다. 미설정 환경에서 관리자 API는 닫힌 상태다.
 
-초안 테이블과 공개 글을 분리하고 서버 권한·Origin/CSRF·버전 충돌 검사를 적용했다. 새 분류 FRONTEND/BACKEND와 보존형 migration을 준비했다. 기존 WEB/PROGRAMMING 자료가 있으면 수동 이전 검토 전 migration을 중단한다. 직접 사진 업로드·소개 편집·댓글은 아직 구현하지 않았다.
+초안 테이블과 공개 글을 분리하고 서버 권한·Origin/CSRF·버전 충돌 검사를 적용했다. 새 분류 FRONTEND/BACKEND와 보존형 migration을 준비했다. 기존 WEB/PROGRAMMING 자료가 있으면 수동 이전 검토 전 migration을 중단한다. 후속 변경으로 사용자 아이콘 등록, 본문 이미지 드래그 업로드, VRChat 사진 초안·공개 관리를 구현했다. 새 미디어 버전의 운영 전환은 아직 수행하지 않았다. 소개 편집·댓글은 아직 구현하지 않았다.
 
 운영 서버의 current 링크가 앱 커밋 `9378c630`의 관리자 standalone release로 전환된 것을 확인했다. 사용자 서버에서 시험 DB 통합 검사 1개와 HTTP 검사 68개가 통과했고, 사용자가 실제 GitHub 로그인 성공을 보고했다. 브라우저의 초안 저장·발행·공개 중지·로그아웃 확인은 남아 있다. 자세한 절차는 [관리자 운영 안내](ADMIN.md), 이번 검사 결과는 [검증 기록](VERIFICATION.md)에 있다.
 

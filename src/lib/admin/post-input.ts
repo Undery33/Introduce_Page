@@ -1,4 +1,5 @@
 import { AdminError } from "./errors";
+import { imageIdFromUrl } from "../media";
 
 export const editorCategories = [
   "frontend",
@@ -19,7 +20,7 @@ export type PostInput = {
   title: string;
   description: string;
   category: (typeof editorCategories)[number];
-  icon: (typeof editorIcons)[number];
+  icon: (typeof editorIcons)[number] | `/media/${string}.webp`;
   tags: string[];
   sections: EditorSection[];
 };
@@ -63,7 +64,10 @@ export function parsePostInput(value: unknown): PostInput {
     );
   if (!editorCategories.includes(input.category as PostInput["category"]))
     throw new AdminError(400, "분류를 선택하십시오.");
-  if (!editorIcons.includes(input.icon as PostInput["icon"]))
+  if (
+    !editorIcons.includes(input.icon as (typeof editorIcons)[number]) &&
+    !imageIdFromUrl(input.icon)
+  )
     throw new AdminError(400, "아이콘을 선택하십시오.");
   if (!Array.isArray(input.tags) || input.tags.length > 12)
     throw new AdminError(400, "태그는 최대 12개입니다.");

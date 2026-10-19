@@ -78,7 +78,7 @@ function SocialIcon({ name }: { name: string }) {
   );
 }
 
-export function VrchatDraft() {
+export function VrchatDraft({ photos }: { photos: readonly Photo[] }) {
   const [currentPhoto, setCurrentPhoto] = useState(0);
   const [noticeTitle, setNoticeTitle] = useState("");
   const [modal, setModal] = useState<DialogName | null>(null);
@@ -88,7 +88,7 @@ export function VrchatDraft() {
   const allPhotos = useRef<HTMLAnchorElement>(null);
   const photoSection = useRef<HTMLElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const photo = content.photos[currentPhoto];
+  const photo = photos[currentPhoto] ?? content.photos[0];
 
   useEffect(() => {
     if (!modal) return;
@@ -109,9 +109,8 @@ export function VrchatDraft() {
     setModal(name);
   };
   const movePhoto = (direction: number) =>
-    setCurrentPhoto(
-      (index) =>
-        (index + direction + content.photos.length) % content.photos.length,
+    setCurrentPhoto((index) =>
+      photos.length ? (index + direction + photos.length) % photos.length : 0,
     );
   const openPhoto = (index: number) => {
     setCurrentPhoto(index);
@@ -119,7 +118,7 @@ export function VrchatDraft() {
   };
   const photoButton = (item: Photo, index: number, mini = false) => (
     <button
-      key={item.src}
+      key={`${item.src}-${index}`}
       className={cx("photo-button")}
       type="button"
       aria-label={`${item.description} — 사진 크게 보기`}
@@ -189,9 +188,9 @@ export function VrchatDraft() {
               <span className={cx("tiny-label")}>LITTLE MOMENTS</span>
             </div>
             <div className={cx("mini-photos")} id="mini-photos">
-              {[2, 0].map((index) =>
-                photoButton(content.photos[index], index, true),
-              )}
+              {[2, 0]
+                .filter((index) => index < photos.length)
+                .map((index) => photoButton(photos[index], index, true))}
             </div>
             <button
               type="button"
@@ -228,11 +227,16 @@ export function VrchatDraft() {
             </Link>
           </div>
           <div className={cx("photo-grid")} id="photo-grid">
-            {content.photos.map((item, index) => photoButton(item, index))}
+            {photos.map((item, index) => photoButton(item, index))}
+            {!photos.length && <p>아직 공개된 사진이 없습니다.</p>}
           </div>
           <div className={cx("section-caption")}>
             <span>SCENES I WANT TO KEEP</span>
-            <span>여섯 장의 작은 기억</span>
+            <span>
+              {photos.length === 6
+                ? "여섯 장의 작은 기억"
+                : `${photos.length}장의 작은 기억`}
+            </span>
           </div>
         </section>
 
@@ -414,7 +418,7 @@ export function VrchatDraft() {
             </button>
             <span id="photo-counter" aria-live="polite">
               {String(currentPhoto + 1).padStart(2, "0")} /{" "}
-              {String(content.photos.length).padStart(2, "0")}
+              {String(photos.length).padStart(2, "0")}
             </span>
             <button
               className={cx("icon-button")}

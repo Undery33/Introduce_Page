@@ -41,18 +41,19 @@ class DeployError(Exception):
 
 def clean_environment():
     environment = dict(os.environ)
-    for name in ["DATABASE_URL", "ADMIN_TEST_DATABASE_URL", "SITE_URL", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "ADMIN_GITHUB_ID", "NODE_OPTIONS", "SMOKE_BASE_URL", "EXPECTED_COMMIT"]:
+    for name in ["DATABASE_URL", "ADMIN_TEST_DATABASE_URL", "SITE_URL", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "ADMIN_GITHUB_ID", "NODE_OPTIONS", "SMOKE_BASE_URL", "EXPECTED_COMMIT", "MEDIA_DIRECTORY"]:
         environment.pop(name, None)
     return environment
 
 
-def run(arguments, *, environment=None, input_file=None, output_file=None, timeout=180):
+def run(arguments, *, environment=None, input_file=None, output_file=None, timeout=180, public_artifacts=False):
     try:
         result = subprocess.run(
             [str(value) for value in arguments], cwd=ROOT,
             env=environment if environment is not None else clean_environment(),
             stdin=input_file, stdout=output_file if output_file is not None else subprocess.PIPE,
             stderr=subprocess.PIPE, timeout=timeout, check=False,
+            umask=0o022 if public_artifacts else -1,
         )
     except (OSError, subprocess.TimeoutExpired):
         raise DeployError(f"명령 실행/시간 제한 오류: {Path(arguments[0]).name}") from None
@@ -144,6 +145,8 @@ def preflight(manifest):
         raise DeployError("현재 systemd 서비스 설정이 사전에 확인한 내용과 다릅니다.")
     if Path("/etc/nginx/sites-enabled/undery.link").resolve() != NGINX:
         raise DeployError("활성 Nginx 설정 경로가 다릅니다.")
+    if manifest.get("previous_dropin_sha256") and (not DROPIN.is_file() or digest(DROPIN) != manifest["previous_dropin_sha256"]):
+        raise DeployError("현재 관리자 drop-in이 확인한 버전과 다릅니다.")
     if DROPIN.is_symlink():
         raise DeployError("관리자 drop-in이 심볼릭 링크입니다.")
     if BACKUPS.is_symlink() or BACKUPS.exists() and (not BACKUPS.is_dir() or BACKUPS.stat().st_uid != 0 or BACKUPS.stat().st_mode & 0o022):
@@ -167,6 +170,7 @@ def preflight(manifest):
         assert(u.protocol === 'postgresql:' && u.hostname === '127.0.0.1' && u.port === '5432' && u.pathname === '/undery' && u.username === 'undery' && u.password && !u.search);
         assert(t.protocol === u.protocol && t.hostname === u.hostname && t.port === u.port && t.pathname === '/undery_test' && t.username === u.username && t.password === u.password && !t.search);
         assert(test.ADMIN_TEST_DATABASE_URL === test.DATABASE_URL);
+        assert(app.MEDIA_DIRECTORY === undefined || app.MEDIA_DIRECTORY === "/var/lib/undery-media");
         assert(app.SITE_URL === 'https://undery.link' && app.ADMIN_GITHUB_ID === '127064386' && app.GITHUB_CLIENT_ID && app.GITHUB_CLIENT_SECRET);
       } catch { console.error('DB/OAuth 환경 설정을 확인하십시오.'); process.exit(1); }
     '''
@@ -174,7 +178,7 @@ def preflight(manifest):
     ids = run(["docker", "ps", "-q", "--filter", "label=com.docker.compose.project=undery-site", "--filter", "label=com.docker.compose.service=db"]).splitlines()
     if len(ids) != 1 or run(["docker", "inspect", "--format", "{{.State.Health.Status}}", ids[0]]) != "healthy":
         raise DeployError("준비한 PostgreSQL 컨테이너 한 개가 healthy 상태여야 합니다.")
-    for port in [3101, 3102]:
+    for port in ([3101, 3102, 3103] if manifest.get("media") else [3101, 3102]):
         try:
             with socket.socket() as probe:
                 probe.bind(("127.0.0.1", port))
@@ -224,9 +228,11 @@ def apply(manifest, container):
     original_nginx = NGINX.read_bytes()
     new_nginx = (ROOT / "deploy/nginx/undery.link.conf").read_bytes()
     new_dropin = ("# undery-admin-deploy\n[Service]\nEnvironmentFile=/etc/undery/app.env\nEnvironment=BUILD_COMMIT=" + commit + "\n").encode()
+    if manifest.get("media"):
+        new_dropin += b"StateDirectory=undery-media\nStateDirectoryMode=0700\nEnvironment=MEDIA_DIRECTORY=/var/lib/undery-media\n"
     state = {
         "old_release": str(CURRENT.resolve()), "new_release": str(release),
-        "previous_commit": manifest["previous_release"], "commit": commit,
+        "previous_commit": manifest.get("previous_commit", manifest["previous_release"]), "commit": commit,
         "had_dropin": DROPIN.exists(), "old_dropin_sha256": digest(DROPIN) if DROPIN.exists() else None,
         "new_dropin_sha256": hashlib.sha256(new_dropin).hexdigest(),
         "old_nginx_sha256": hashlib.sha256(original_nginx).hexdigest(),
@@ -242,13 +248,19 @@ def apply(manifest, container):
     try:
         print("1/5 소스 확인 · 배포 커밋 빌드 · HTTP/시험 DB 검사", flush=True)
         build_environment = {**clean_environment(), "NODE_ENV": "production", "BUILD_COMMIT": commit, "SITE_URL": "https://undery.link", "NEXT_TELEMETRY_DISABLED": "1"}
-        run([NODE, ROOT / "node_modules/next/dist/bin/next", "build", "--webpack"], environment=build_environment, timeout=600)
-        run([NODE, ROOT / "scripts/prepare-standalone.mjs"], environment=build_environment)
+        run([NODE, ROOT / "node_modules/prisma/build/index.js", "generate"], environment=build_environment, public_artifacts=True)
+        run([NODE, ROOT / "node_modules/next/dist/bin/next", "build", "--webpack"], environment=build_environment, timeout=600, public_artifacts=True)
+        run([NODE, ROOT / "scripts/prepare-standalone.mjs"], environment=build_environment, public_artifacts=True)
         verify_source(manifest)
         smoke_environment = {**build_environment, "EXPECTED_COMMIT": commit, "SMOKE_PORT": "3101"}
         result = run([NODE, ROOT / "scripts/smoke.mjs"], environment=smoke_environment)
         print(next((line for line in result.splitlines() if line.startswith("PASS:")), "HTTP 검사 통과"), flush=True)
+        if manifest.get("media"):
+            run([NODE, "--env-file=" + str(TEST_ENV), ROOT / "node_modules/prisma/build/index.js", "migrate", "deploy"])
         run([NODE, "--env-file=" + str(TEST_ENV), "--import", "tsx", "--test", "--test-isolation=none", "tests/integration/admin-database.test.ts"])
+        if manifest.get("media"):
+            result = run([NODE, "--env-file=" + str(TEST_ENV), "--import", "tsx", "--test", "--test-isolation=none", "tests/integration/media-http.test.ts"])
+            print(next((line for line in result.splitlines() if "authenticated media HTTP checks" in line), "이미지/사진 인증 HTTP 검사 통과"), flush=True)
 
         print("2/5 운영 DB 백업 · 별도 DB 복원 확인", flush=True)
         archive = backup / "undery-before-migration.dump"
@@ -257,7 +269,19 @@ def apply(manifest, container):
         restore_db = "undery_restore_" + stamp.lower()
         run(["docker", "exec", container, "createdb", "-U", "postgres", "-O", "undery", restore_db])
         with archive.open("rb") as source:
-            run(["docker", "exec", "-i", container, "pg_restore", "-U", "postgres", "-d", restore_db, "--exit-on-error", "--no-owner", "--no-acl"], input_file=source)
+            run(["docker", "exec", "-i", container, "pg_restore", "-U", "postgres", "-d", restore_db, "--exit-on-error", "--no-owner", "--no-acl", "--role", "undery"], input_file=source)
+        if manifest.get("media"):
+            # Try the additive migration on a restored production snapshot first.
+            migration_check = """
+              const {spawnSync} = require('node:child_process');
+              const u = new URL(process.env.DATABASE_URL);
+              u.pathname = '/' + process.argv[1];
+              const result = spawnSync(process.execPath, [process.argv[2], 'migrate', 'deploy'], {
+                env: {...process.env, DATABASE_URL: u.href}, stdio: 'inherit'
+              });
+              process.exit(result.status ?? 1);
+            """
+            run([NODE, "--env-file=" + str(APP_ENV), "-e", migration_check, restore_db, ROOT / "node_modules/prisma/build/index.js"])
         # Only this invocation's successfully restored disposable DB is removed.
         run(["docker", "exec", container, "dropdb", "-U", "postgres", restore_db])
 
@@ -275,8 +299,14 @@ def apply(manifest, container):
 
         print("4/5 운영 DB 연결 후보 서버 검사", flush=True)
         candidate_env = {**clean_environment(), "NODE_ENV": "production", "HOSTNAME": "127.0.0.1", "PORT": "3102", "BUILD_COMMIT": commit}
+        if manifest.get("media"):
+            candidate_media = backup / "candidate-media"
+            candidate_media.mkdir(mode=0o700)
+            candidate_env["MEDIA_DIRECTORY"] = str(candidate_media)
         candidate = subprocess.Popen([str(NODE), "--env-file=" + str(APP_ENV), str(release / "server.js")], cwd=release, env=candidate_env, stdout=LOG, stderr=LOG)
-        health(3102, commit)
+        candidate_health = health(3102, commit)
+        if manifest.get("media") and candidate_health.get("checks", {}).get("media") != "ok":
+            raise DeployError("후보 서버의 사진 저장소 검사가 실패했습니다.")
         if candidate.poll() is not None:
             raise DeployError("후보 서버 프로세스가 종료되었습니다.")
         admin = run(["curl", "--fail", "--silent", "--max-time", "10", "http://127.0.0.1:3102/admin"])
@@ -287,7 +317,7 @@ def apply(manifest, container):
         candidate = None
 
         print("5/5 Nginx 설정 검사 · release 전환 · 서비스 상태 확인", flush=True)
-        if CURRENT.resolve() != Path(state["old_release"]) or digest(NGINX) != state["old_nginx_sha256"]:
+        if CURRENT.resolve() != Path(state["old_release"]) or digest(NGINX) != state["old_nginx_sha256"] or (digest(DROPIN) if DROPIN.exists() else None) != state["old_dropin_sha256"]:
             raise DeployError("준비 중 운영 설정이 바뀌었습니다. 전환을 중단합니다.")
         changed_web = True
         atomic_file(NGINX, new_nginx)
@@ -302,9 +332,11 @@ def apply(manifest, container):
         https_data = json.loads(run(["curl", "--fail", "--silent", "--show-error", "--max-time", "15", "--resolve", "undery.link:443:127.0.0.1", "https://undery.link/api/health"]))
         if https_data.get("commit") != commit or https_data.get("status") != "ok" or https_data.get("checks", {}).get("database") != "ok":
             raise DeployError("HTTPS Nginx 경유 상태 확인이 실패했습니다.")
+        if manifest.get("media") and (data.get("checks", {}).get("media") != "ok" or https_data.get("checks", {}).get("media") != "ok"):
+            raise DeployError("운영 사진 저장소 접근 검사가 실패했습니다.")
         print("배포 완료: " + json.dumps(data, ensure_ascii=False), flush=True)
         print("관리자 접속: https://undery.link/admin", flush=True)
-        print("아직 확인할 항목: 실제 GitHub 로그인과 브라우저 글 작성/발행", flush=True)
+        print("브라우저 확인: 사용자 아이콘 · 본문 드래그 이미지 · VRChat 사진 추가/수정" if manifest.get("media") else "아직 확인할 항목: 실제 GitHub 로그인과 브라우저 글 작성/발행", flush=True)
         print(f"수동 복구: python3 {Path(__file__).resolve()} --rollback {backup}", flush=True)
     except BaseException:
         if changed_web:
@@ -329,6 +361,7 @@ def apply(manifest, container):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manifest", type=Path, default=ROOT / "deploy/admin-source.json", help="검토한 배포 소스/현재 release manifest")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--apply", action="store_true", help="검사 후 실제 운영 migration과 release 전환")
     group.add_argument("--rollback", type=Path, help="출력된 백업 경로의 웹 release/설정만 복구")
@@ -345,7 +378,7 @@ def main():
         if arguments.rollback:
             rollback(arguments.rollback)
             return
-        manifest = json.loads((ROOT / "deploy/admin-source.json").read_text())
+        manifest = json.loads(arguments.manifest.read_text())
         container = preflight(manifest)
         print("사전 확인 통과. 대상 앱 커밋: " + manifest["commit"], flush=True)
         if arguments.apply:
