@@ -10,6 +10,7 @@
 - Python 배포 보호/복구 검사 5개와 스크립트 구문 검사를 통과했다. 새 배포 manifest는 첫 관리자 release를 기준으로 소스를 고정한다. 시험 DB migration·글 DB 검사·인증 미디어 HTTP 검사·운영 dump 복원 및 복원 DB migration이 성공해야 운영 migration/서비스 전환을 진행한다.
 - 제한 환경에서 새 빌드의 npm run test:smoke를 실행했으나 서버 시작이 차단됐다. 직접 standalone 실행으로 `listen EPERM 127.0.0.1:3101`을 확인했다. 이 버전의 실제 HTTP·DB·배포 통과를 주장하지 않는다. 이전 버전의 사용자 보고 PASS 68은 이번 변경의 HTTP 검증으로 재사용하지 않는다.
 - tests/integration/media-http.test.ts는 별도 *_test DB와 임시 미디어 디렉터리에서 인증된 업로드, 변조 Origin/CSRF, 초안 이미지 비공개, 아이콘 재사용, 실제 챕터 HTTP, VRChat 신규/기존 사진의 초안·교체·공개·중지, 로그아웃을 검사하도록 준비했다. 운영에서는 실제 GitHub 세션을 유지하며 시험 세션을 추가하지 않는다.
+- 원격 앱 커밋 `22c66a6a4b6569a8227bcb791373b861eb662204`에 변경 파일 52개를 기록하고 각 Git blob SHA를 대조했다. `deploy/media-source.json`은 해당 앱 커밋의 158개 입력 파일을 검증한다. 후속 manifest·문서 커밋과 실제 앱 BUILD_COMMIT을 구분한다.
 - 남은 확인: 서버 root 터미널에서 MEDIA.md의 배포 실행, 새 버전의 시험 DB/HTTP 검사 결과, 브라우저의 드래그·파일 선택·한글 편집과 저장/공개. 이 세션에서 운영 DB migration·웹 재시작·실제 사용자 사진 업로드는 수행하지 않았다.
 
 ## 2026-10-19 — 운영 release 전환과 사용자 로그인 확인
