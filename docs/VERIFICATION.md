@@ -1,5 +1,15 @@
 # 기반 구현 검증 기록
 
+## 2026-10-20 KST — 미디어 운영 배포 완료 확인
+
+- 사용자가 배포 명령 실행 후 “완료”를 보고했다. 서버 current 링크가 `690d44f69f21b0ef42518e9c14d9e35dca89a61a-admin-20261019T221441846923Z` release로 전환된 것을 직접 확인했다.
+- 대표 HTTPS `https://undery.link/api/health`를 curl로 조회했다. `status=ok`, `stage=admin-media`, `commit=690d44f69f21b0ef42518e9c14d9e35dca89a61a`, `checks.application/database/media=ok`, `checks.authentication=configured`를 확인했다.
+- 비인증 HTTPS GET: `/admin` 200, `/admin/photos` 307, `/game/vrchat` 200, `/game/vrchat/photo` 200. 사용자 세션 쿠키를 사용하거나 운영 콘텐츠를 생성하지 않았다.
+- 웹 검색 도구의 health 열기와 실행 환경의 localhost:3000 접근은 실패했으나 동일 실행 환경에서 대표 HTTPS curl은 성공했다. localhost 접근 실패를 운영 장애로 해석하지 않는다.
+- 상세 배포 로그와 이번 인증 미디어 HTTP 검사의 개별 결과는 별도로 전달받지 않았다. 완료 보고와 실제 release/health 확인을 근거로 운영 반영을 기록하며 백업 복원 등 모든 단계를 직접 재검증했다고 주장하지 않는다.
+- 남은 사용자 확인: 관리자 새로고침 후 사용자 아이콘 등록·재선택, 본문 드래그 이미지·한글 편집·초안 재열기, 발행 글 챕터 이동, VRChat 사진 추가·교체·공개·공개 중지. 초안 저장만으로 새 내용이 공개되지 않는 흐름을 포함한다.
+- 현재 상태와 사용 안내 문서만 갱신했다. 앱 코드·manifest·DB·서비스 설정은 변경하지 않았다. 완료한 이전 release 기준 manifest는 다시 적용하지 않는다.
+
 ## 2026-10-20 KST — 배포 사전 포트 검사 보완
 
 - 운영자가 `시험 포트 3103를 사용할 수 없습니다`를 보고했다. 기존 포트 검사는 OSError의 원인을 구분하지 않고 재사용 옵션 없이 bind했다. 장애 순간의 TCP 상태는 확보하지 못했으므로 실제 점유와 TIME_WAIT 중 어느 상태였는지는 확정하지 않는다. 이후 확인한 `/proc/net/tcp`, `/proc/net/tcp6`에는 3103 소켓이 없었으며 기존 운영 release 링크가 유지됐다.
