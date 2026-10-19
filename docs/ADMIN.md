@@ -1,6 +1,6 @@
 # 관리자 로그인과 Coding 글 작성
 
-2026-10-19 구현. 기준은 `feature/web`의 `edddc7521c979ee78ea23ab2cddcdfeed43ce532`이다. 코드 빌드와 단위 검사는 통과했지만 실제 PostgreSQL migration, GitHub 로그인, 브라우저 편집과 운영 배포는 아직 검증하지 않았다. [검증 기록](VERIFICATION.md)의 현재 결과를 먼저 확인한다.
+2026-10-19 구현. 기준은 `feature/web`의 `edddc7521c979ee78ea23ab2cddcdfeed43ce532`이다. 코드 빌드와 단위 검사에 이어 사용자 서버에서 시험 DB 통합 검사 1개와 HTTP 검사 68개가 통과했다. GitHub 실제 로그인, 브라우저 편집과 운영 배포는 아직 검증하지 않았다. [검증 기록](VERIFICATION.md)의 현재 결과를 먼저 확인한다.
 
 ## 작성 방법
 
@@ -88,28 +88,34 @@ npm run test:admin:db
 
 ## 기존 systemd 서비스에 적용
 
-2026-10-19 파일 확인 기준으로 `undery-web.service`는 `/opt/personal-site/web/current/server.js`를 Node 24.20.0으로 실행하도록 설정되어 있다. `current`는 `edddc752...` release를 가리켰다. 서비스 버스 접근이 차단되어 실제 프로세스 상태를 확인한 것은 아니다.
+2026-10-19 확인한 현재 release와 Nginx/systemd 설정을 대상으로 배포 스크립트를 준비했다. `deploy/admin-source.json`의 앱 커밋 `9378c630d1a6049bdc38c64e91ada63d796b46a5`와 빌드 입력 파일의 Git blob SHA를 확인하며, 현재 운영 release가 `edddc752...`가 아니거나 기존 설정이 바뀌면 중단한다. 일반 배포 도구가 아닌 이번 관리자 기능의 첫 전환용이다.
 
-1. 현재 release symlink와 Nginx 설정을 백업한다. 새 DB 사용 시 백업·복원 절차까지 확인한다.
-2. 새 브랜치의 정확한 커밋을 별도 checkout에서 `npm ci`, `npm run check`, `BUILD_COMMIT=$(git rev-parse HEAD) npm run build`, `npm run test:smoke`로 검증한다. smoke는 DB/OAuth가 없는 별도 프로세스에서만 실행한다.
-3. 시험 DB migration·`test:admin:db`를 통과시키고 시험 환경에서 아래 수동 검사를 마친다. 운영 DB는 백업 후 같은 추가형 migration을 적용한다.
-4. `.next/standalone/` 내용 전체를 **새** `/opt/personal-site/web/releases/<검증한 커밋>/`에 복사한다. 빌드 스크립트가 public과 정적 파일도 포함한다. 실행 중 release 디렉터리에 덮어쓰지 않는다.
-5. `/etc/undery/app.env`를 만들고 `deploy/systemd/admin.conf`를 `/etc/systemd/system/undery-web.service.d/admin.conf`에 설치한다. 기존 DynamicUser·캐시 BindPaths·하드닝을 유지한다. 새 release의 `.next/cache` 디렉터리를 확인한다.
-6. `deploy/nginx/undery.link.conf`의 변경을 실제 활성 설정에 반영한다. 인증 경로 로그·요청 빈도 제한과 관리자 JSON 256 KiB 제한이 포함되어 있다. `limit_req_zone`은 http 컨텍스트에 한 번만 선언한다. `nginx -t` 실패 시 reload하지 않는다.
-7. 준비가 끝나면 `current` symlink를 새 release로 원자적으로 교체하고 다음을 실행한다.
+신뢰한 checkout의 **서버 root 터미널**에서 실행한다. 기본 실행은 사전 검사이며, `--apply`를 지정하면 실제 운영 변경을 시작한다.
 
 ```sh
-sudo systemctl daemon-reload
-sudo systemctl restart undery-web
-sudo nginx -t
-sudo systemctl reload nginx
-curl --fail http://127.0.0.1:3000/api/health
-curl --fail https://undery.link/api/health
+python3 scripts/deploy-host-admin.py
+python3 scripts/deploy-host-admin.py --apply
 ```
 
-health의 `commit`이 선택한 커밋이며 `checks.database`가 `ok`, `checks.authentication`이 `configured`인지 확인한다. `configured`는 환경변수 형식만 확인한 상태이며 GitHub 로그인 성공을 의미하지 않는다. DB가 설정됐지만 연결 또는 테이블 확인이 실패하면 HTTP 503이다.
+실행 순서:
 
-실패하면 기록한 이전 release로 symlink를 되돌리고 재시작한다. DB는 자동으로 과거 시점으로 되돌리지 않는다. 이전 앱이 DB 글 조회를 지원하지 않으면 저장된 글이 잠시 화면에 보이지 않을 수 있지만 데이터는 유지된다. 인증을 즉시 닫으려면 환경 파일에서 OAuth 설정을 제거하고 재시작한다.
+1. 소스·환경 파일·서비스·DB·시험 포트를 확인하고 배포 잠금을 잡는다.
+2. 정확한 앱 커밋 번호로 빌드한다. 비밀값은 빌드에 주입하지 않는다. HTTP 검사와 시험 DB 통합 검사를 다시 실행한다.
+3. `/var/backups/undery-site/deploy-<시간>/`에 현재 웹 설정, 복구 정보, 비공개 로그와 운영 DB custom dump를 저장한다. 새 임시 DB에 dump를 복원하고 성공한 임시 DB만 제거한다.
+4. 운영 DB에 `migrate deploy`를 적용한다. 새 release 디렉터리에 standalone을 복사하고 일반 파일/디렉터리를 DynamicUser가 읽을 수 있도록 설정한다.
+5. 3102 포트의 후보 서버에서 운영 DB 연결, 인증 환경 설정과 관리자 로그인 화면을 확인하고 종료한다.
+6. Nginx 설정을 검사하고 OAuth 환경 파일과 BUILD_COMMIT drop-in을 설치한다. 기존 하드닝은 유지한다. current symlink를 원자적으로 교체하고 Nginx reload와 웹 재시작을 수행한다.
+7. 3000 포트와 로컬 TLS Nginx를 경유한 `https://undery.link/api/health`에서 커밋/DB 상태를 확인한다. 외부 네트워크 접속과 GitHub 실제 인증은 다음 브라우저 확인에서 수행한다.
+
+전환 후 검사 실패 시 이전 symlink와 Nginx/systemd drop-in을 복구한다. 운영 DB migration을 자동으로 되돌리지 않는다. 정상 종료 시 출력된 다음 명령으로 수동 복구할 수도 있다.
+
+```sh
+python3 scripts/deploy-host-admin.py --rollback /var/backups/undery-site/deploy-실제출력된시간
+```
+
+다른 작업이 current/Nginx/drop-in을 변경한 경우 복구 스크립트도 덮어쓰지 않고 중단한다. 실패 출력과 백업 경로를 먼저 확인한다. 배포 로그·DB dump·환경 파일에는 민감한 정보가 있을 수 있으므로 저장소나 채팅에 그대로 올리지 않는다.
+
+health의 `checks.authentication=configured`는 환경 설정 검사를 의미하며 GitHub 로그인 성공을 의미하지 않는다. 적용 후 `/admin`에서 실제 로그인과 다음 항목을 확인한다. 초기 전환 동안 웹 재시작으로 짧은 연결 중단이 발생할 수 있다.
 
 ### 실제 로그인 후 확인할 항목
 

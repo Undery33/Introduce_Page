@@ -6,7 +6,7 @@
 
 초안 테이블과 공개 글을 분리하고 서버 권한·Origin/CSRF·버전 충돌 검사를 적용했다. 새 분류 FRONTEND/BACKEND와 보존형 migration을 준비했다. 기존 WEB/PROGRAMMING 자료가 있으면 수동 이전 검토 전 migration을 중단한다. 직접 사진 업로드·소개 편집·댓글은 아직 구현하지 않았다.
 
-운영 서버 파일은 `edddc752` standalone release를 가리킨다. 새 관리자 변경은 배포하지 않았다. 실제 DB migration·OAuth·HTTP/브라우저 검증은 실행 권한과 비공개 설정이 준비된 뒤 수행한다. 자세한 절차는 [관리자 운영 안내](ADMIN.md), 이번 검사 결과는 [검증 기록](VERIFICATION.md)에 있다.
+운영 서버 파일은 `edddc752` standalone release를 가리킨다. 새 관리자 변경은 배포하지 않았다. 사용자 서버에서 시험 DB 통합 검사 1개와 HTTP 검사 68개가 통과했다. 운영 배포와 실제 OAuth/브라우저 검증은 다음 단계다. 자세한 절차는 [관리자 운영 안내](ADMIN.md), 이번 검사 결과는 [검증 기록](VERIFICATION.md)에 있다.
 
 아래는 2026-10-06까지의 구현 이력이며, ‘미구현’·‘운영 미배포’ 표현은 당시 상태다.
 

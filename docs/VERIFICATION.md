@@ -1,5 +1,16 @@
 # 기반 구현 검증 기록
 
+## 2026-10-19 22:30~22:35 KST — 사용자 서버 검증 통과와 배포 준비
+
+- 사용자가 prepare-host-database.py 완료 메시지를 전달했다. 서버에 PostgreSQL과 운영/시험 DB 준비 단계가 완료됐다는 운영자 실행 결과다. Codex 실행 환경의 서비스·소켓 제한은 유지된다.
+- 사용자가 안내된 시험 DB migration + 통합 검사 명령의 결과를 전달했다: tests 1, pass 1, fail 0, duration 487.690813ms. 초안 분리·발행·수정 충돌·중복 주소 롤백·공개 중지·재발행이 실제 시험 DB에서 검증됐다. 개별 migration 출력은 별도로 전달받지 않았으므로 위 결과를 근거로 기록한다.
+- 사용자가 실제 서버의 HTTP smoke 결과를 전달했다: PASS 68 HTTP checks. 기존 페이지, 검색/태그, 메타데이터/사이트맵, 미지원 경로 404, 비로그인 작성 API 거절이 통과했다. 앞선 제한 환경의 HTTP 실패 기록을 이 운영자 실행 결과로 보완한다.
+- scripts/deploy-host-admin.py와 deploy/admin-source.json 추가. 앱 커밋 9378c630d1a6049bdc38c64e91ada63d796b46a5의 빌드 입력·공개 자산·migration·검사·Nginx 파일 118개의 Git blob SHA를 로컬 파일과 대조했다. 새 배포 도구/문서는 후속 커밋으로 보존하며 앱의 BUILD_COMMIT은 검증한 9378c630으로 고정한다. 합성 로컬 Git HEAD를 배포 버전으로 사용하지 않는다.
+- 배포 스크립트는 exact-source 빌드와 HTTP/시험 DB 검사를 다시 실행하고 운영 DB 백업을 별도 DB에 복원한다. 운영 migration 후 후보 서버를 확인하고 Nginx 검사, 환경 파일 연결, release symlink 전환, systemd 재시작, 내부/TLS Nginx health 확인을 수행하도록 작성했다. 전환 후 실패하면 이전 release와 웹 설정을 복구하고 DB는 유지한다. 이 배포 절차 자체는 아직 실제 서버에서 실행하지 않았다.
+- 이번 배포 도구 추가 후 npm run check(47개 검사/ESLint/TypeScript/Prisma)와 BUILD_COMMIT=9378c630d1a6049bdc38c64e91ada63d796b46a5 빌드를 다시 통과했다. 제한 실행 환경의 HTTP 재시도는 서버 시작 권한 오류로 중단됐다. 배포 도구는 새 커밋 표시로 빌드한 산출물에 대해 서버 터미널에서 HTTP 검사를 다시 통과시킨 뒤 운영 변경을 시작한다.
+- Python 검사 5개 통과(기존 DB 준비 보호 2개 + release 복구 3개). 실제 파일/링크 복구, 운영자가 중간에 바꾼 설정 보존, 일반 디렉터리의 링크 교체 거절을 확인했다. 실제 systemd/Nginx 실행의 검증을 대체하지 않는다.
+- 아직 남은 검증: 운영 배포 스크립트 실행 결과, 외부 브라우저의 GitHub 로그인, 다른 계정 거절, 세션/CSRF/로그아웃, 편집·발행·공개 중지 흐름. HTTP smoke가 인증된 작성 흐름을 검증한 것으로 해석하지 않는다.
+
 ## 2026-10-19 — 서버 DB 준비 절차 추가
 
 - 사용자 터미널 결과: undery-web active, 실행 중인 Docker 컨테이너 없음, TCP 5432 리스너 없음. 사용자가 OAuth 환경 파일 저장 완료를 알렸다. 비밀값은 읽거나 대화에 출력하지 않았다.
