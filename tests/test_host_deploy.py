@@ -1,8 +1,10 @@
 import contextlib
+import errno
 import hashlib
 import importlib.util
 import io
 import json
+import socket
 from pathlib import Path
 import tempfile
 import unittest
@@ -11,6 +13,51 @@ from unittest.mock import patch
 spec = importlib.util.spec_from_file_location("host_deploy", Path(__file__).resolve().parents[1] / "scripts/deploy-host-admin.py")
 deploy = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(deploy)
+
+
+class DeploymentPortTests(unittest.TestCase):
+    def listener(self):
+        server = socket.socket()
+        self.addCleanup(server.close)
+        server.settimeout(2)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            server.bind(("127.0.0.1", 0))
+            server.listen(1)
+        except OSError as error:
+            if error.errno in (errno.EPERM, errno.EACCES):
+                self.skipTest("Loopback sockets are denied in this execution environment")
+            raise
+        return server
+
+    def test_active_listener_is_still_rejected(self):
+        server = self.listener()
+        with self.assertRaisesRegex(deploy.DeployError, "EADDRINUSE"):
+            deploy.check_test_port(server.getsockname()[1])
+
+    def test_completed_connection_can_be_reused_during_time_wait(self):
+        server = self.listener()
+        address = server.getsockname()
+        with socket.create_connection(address, timeout=2) as peer:
+            accepted, _ = server.accept()
+            with accepted:
+                accepted.settimeout(2)
+                # The server actively closes, leaving its local port in TIME_WAIT.
+                accepted.shutdown(socket.SHUT_WR)
+                self.assertEqual(peer.recv(1), b"")
+                peer.shutdown(socket.SHUT_WR)
+                self.assertEqual(accepted.recv(1), b"")
+        server.close()
+        with socket.socket() as old_probe:
+            with self.assertRaises(OSError) as failure:
+                old_probe.bind(address)
+            self.assertEqual(failure.exception.errno, errno.EADDRINUSE)
+        deploy.check_test_port(address[1])
+
+    def test_permission_failure_is_not_reported_as_port_occupancy(self):
+        with patch.object(deploy.socket, "socket", side_effect=PermissionError(errno.EPERM, "denied")):
+            with self.assertRaisesRegex(deploy.DeployError, "검사 실패 \\(EPERM\\)"):
+                deploy.check_test_port(3103)
 
 
 class DeploymentRecoveryTests(unittest.TestCase):

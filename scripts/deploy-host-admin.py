@@ -7,6 +7,7 @@ production, validates a candidate, then switches the service with rollback.
 
 import argparse
 import datetime
+import errno
 import fcntl
 import hashlib
 import json
@@ -132,6 +133,23 @@ def health(port, commit, database=True, attempts=40):
     raise DeployError(f"포트 {port}의 앱/DB/인증 설정 상태 검사가 실패했습니다.")
 
 
+def check_test_port(port):
+    try:
+        with socket.socket() as probe:
+            # Match Node's SO_REUSEADDR: a completed test's TIME_WAIT sockets
+            # must not fail preflight. An active listener still blocks binding.
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            probe.bind(("127.0.0.1", port))
+    except OSError as error:
+        code = errno.errorcode.get(error.errno, "UNKNOWN")
+        if error.errno == errno.EADDRINUSE:
+            raise DeployError(
+                f"시험 포트 {port}를 사용할 수 없습니다 ({code}). "
+                f"root 터미널에서 ss -antp '( sport = :{port} )'로 확인하십시오."
+            ) from None
+        raise DeployError(f"시험 포트 {port} 검사 실패 ({code}). 실행 환경의 소켓 권한/설정을 확인하십시오.") from None
+
+
 def preflight(manifest):
     if os.geteuid() != 0:
         raise DeployError("서버 root 터미널에서 실행해야 합니다.")
@@ -179,11 +197,7 @@ def preflight(manifest):
     if len(ids) != 1 or run(["docker", "inspect", "--format", "{{.State.Health.Status}}", ids[0]]) != "healthy":
         raise DeployError("준비한 PostgreSQL 컨테이너 한 개가 healthy 상태여야 합니다.")
     for port in ([3101, 3102, 3103] if manifest.get("media") else [3101, 3102]):
-        try:
-            with socket.socket() as probe:
-                probe.bind(("127.0.0.1", port))
-        except OSError:
-            raise DeployError(f"시험 포트 {port}를 사용할 수 없습니다.") from None
+        check_test_port(port)
     return ids[0]
 
 
