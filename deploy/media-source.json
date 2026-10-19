@@ -1,5 +1,5 @@
 {
-  "commit": "5bf83c90dbad931407f8a0237c227096df842794",
+  "commit": "690d44f69f21b0ef42518e9c14d9e35dca89a61a",
   "previous_commit": "9378c630d1a6049bdc38c64e91ada63d796b46a5",
   "previous_release": "9378c630d1a6049bdc38c64e91ada63d796b46a5-admin-20261019T134814443732Z",
   "previous_nginx_sha256": "bee93b64fbda1019e088c753d5f1818a580c534f759790ea56aa8b1a685c87b3",
@@ -37,7 +37,7 @@
     "public/licenses/Anton-OFL.txt": "9675f14ee0825749e970766a315941ce0c9c3ec2",
     "public/licenses/CormorantGaramond-OFL.txt": "10e3a35d024a027a5d8b02aa31762b5afd0c38de",
     "public/licenses/Pretendard-OFL.txt": "ae8d98d30b254c1895f2693ddc5cc8f9868407f5",
-    "scripts/deploy-host-admin.py": "178a6ae985fb63aa57c8280650ab5921ac3d935b",
+    "scripts/deploy-host-admin.py": "61ec815460531cf5f7d04ecab24e0f20e7e7c49b",
     "scripts/prepare-host-database.py": "31674037b7dcb03c21566e8f79d9347e19876809",
     "scripts/prepare-standalone.mjs": "c152d1812ffd9f80d7d607f2bce810afd66de8e3",
     "scripts/smoke.mjs": "37b8de79cfb43dc79ff81edcb46b4ba1112f9986",
@@ -161,7 +161,7 @@
     "tests/integration/media-http.test.ts": "96399329f77cc96b95c2241042fa3ab92a8786e8",
     "tests/proxy.py": "75194ef33da7f7ef455d540f78ee480b606f3951",
     "tests/test_host_database_setup.py": "cda01dbdb034ee248051571f286db98ced722258",
-    "tests/test_host_deploy.py": "01b3374db636247da34e144ab12eb9a7f3e1ba15",
+    "tests/test_host_deploy.py": "c55cc33149d09110396bead81db938dd8a9e2292",
     "tests/vrchat-photos.test.ts": "2fc498019b42bde15f20e57f63a9823e90f1a83e",
     "tsconfig.json": "1feabd7c4fbb9729c5f3906f97469ce3b7a4e59e"
   },

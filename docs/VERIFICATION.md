@@ -1,5 +1,15 @@
 # 기반 구현 검증 기록
 
+## 2026-10-20 KST — 배포 사전 포트 검사 보완
+
+- 운영자가 `시험 포트 3103를 사용할 수 없습니다`를 보고했다. 기존 포트 검사는 OSError의 원인을 구분하지 않고 재사용 옵션 없이 bind했다. 장애 순간의 TCP 상태는 확보하지 못했으므로 실제 점유와 TIME_WAIT 중 어느 상태였는지는 확정하지 않는다. 이후 확인한 `/proc/net/tcp`, `/proc/net/tcp6`에는 3103 소켓이 없었으며 기존 운영 release 링크가 유지됐다.
+- `check_test_port`에 Node 서버와 동일한 SO_REUSEADDR를 적용했다. 실제 TIME_WAIT 연결을 만들어 기존 bind가 EADDRINUSE로 실패하고 수정 함수는 성공하는지 확인했다. 실제 LISTEN 서버 점유는 계속 거절하며 EPERM은 포트 점유와 구분해 표시한다. 임의 프로세스 종료나 TCP 커널 설정 변경은 하지 않았다.
+- `python3 -m unittest discover -s tests -p 'test_host*.py' -v`: 8개 모두 통과, skip 없음. 이 중 실제 loopback TCP 두 검사는 TIME_WAIT 재사용과 활성 listener 거절을 검증한다. 수정 함수로 3101·3102·3103의 현재 사용 가능 여부도 모두 통과했다.
+- 원본 checkout의 npm run check는 이전 root 빌드가 만든 .next/types 쓰기 권한으로 중단됐다. 별도 검증 checkout에서 npm run check 통과: ESLint, TypeScript, 단위/handler 검사 53개, Prisma 스키마. BUILD_COMMIT=690d44f69f21b0ef42518e9c14d9e35dca89a61a npm run build 통과.
+- 이번 실행 환경에서는 loopback TCP가 허용돼 동일 빌드의 npm run test:smoke가 **78개 HTTP 검사 모두 통과**했다. 앞선 실행 환경의 listen 차단 기록과 구분한다. 비인증 공개 화면/닫힌 API 검사이며 시험 DB를 사용하는 인증 미디어 통합 검사나 실제 브라우저 조작을 대신하지 않는다.
+- 수정 커밋 `690d44f69f21b0ef42518e9c14d9e35dca89a61a`의 Git tree와 로컬 배포 manifest 입력 158개를 대조했다. 변경은 배포 도구·그 검사·manifest·문서다. 앱 기능, migration, 운영 기준 release와 이전 설정 해시는 유지했다.
+- 보고된 오류는 preflight 단계이므로 해당 실행의 운영 migration과 웹 전환은 시작되지 않았다. 서버 root 터미널에서 수정 manifest로 배포를 재실행해야 한다. 인증 미디어 HTTP 검사의 사용자 재실행 성공 결과는 아직 전달받지 않았다.
+
 ## 2026-10-19 — 미디어 HTTP 검사의 아이콘 이름 길이 수정
 
 - 운영자가 전달한 통합 검사 실패: `POST /api/admin/icons`에서 기대 201 대신 400. 시험 fixture의 `test-`(5자) + UUID(36자)가 41자여서 실제 API의 1~40자 검증에 걸렸다. 인증·업로드 오류나 DB migration 실패로 해석하지 않는다.

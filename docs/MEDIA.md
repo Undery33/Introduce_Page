@@ -32,7 +32,7 @@
 
 ## 현재 서버에 적용
 
-이번 배포 커밋: `5bf83c90dbad931407f8a0237c227096df842794`. 최초 미디어 앱 커밋 `22c66a6a4b6569a8227bcb791373b861eb662204`에서 인증 HTTP 검사의 아이콘 이름 fixture만 수정했다. 배포 manifest는 수정된 커밋의 앱·자산·검사·배포 도구 파일 158개를 확인한다.
+이번 배포 커밋: `690d44f69f21b0ef42518e9c14d9e35dca89a61a`. 최초 미디어 앱 커밋 `22c66a6a4b6569a8227bcb791373b861eb662204` 이후 인증 HTTP 검사의 아이콘 이름 fixture와 배포 전 포트 검사를 수정했다. 배포 manifest는 수정된 커밋의 앱·자산·검사·배포 도구 파일 158개를 확인한다.
 
 이미 확인한 관리자 release에서 한 번 전환하는 절차다. `deploy/media-source.json`은 현재 release, 이전 Nginx/systemd 설정 해시, 새 앱 커밋과 소스 해시를 고정한다. 값이 다르면 덮어쓰지 않고 중단한다.
 
@@ -52,7 +52,15 @@ python3 scripts/deploy-host-admin.py --manifest deploy/media-source.json --apply
 5. 후보 서버의 DB·인증·사진 저장소 상태 확인 후 Nginx 검사, StateDirectory 설정, release 전환과 웹 재시작을 수행한다. 이미지 API에만 20 MiB 요청을 허용하며 일반 관리 JSON은 기존 256 KiB 제한이다.
 6. 내부 및 HTTPS 프록시 경유 health가 성공해야 완료된다. `/api/health`의 `checks.database`와 `checks.media`가 모두 `ok`인지 확인한다. 실패하면 기존 웹 release·설정을 복구하며 운영 DB와 사진 파일은 유지한다.
 
-이 실행 환경은 TCP listen·Docker/systemd와 운영 경로 쓰기가 제한되어 실제 배포를 대신 실행하지 못한다. 배포 출력의 `PASS`, `배포 완료`, 오류 메시지로 서버 측 결과를 확인한다. 전체 비공개 로그·환경 파일·DB 덤프는 대화에 붙이지 않는다.
+운영 경로 쓰기와 root 전용 설정 접근은 제한되어 실제 배포는 서버 root 터미널에서 실행한다. 배포 출력의 `PASS`, `배포 완료`, 오류 메시지로 서버 측 결과를 확인한다. 전체 비공개 로그·환경 파일·DB 덤프는 대화에 붙이지 않는다.
+
+### 시험 포트 사용 불가로 중단된 경우
+
+시험 서버 종료 직후에는 TCP 연결이 `TIME_WAIT`로 남을 수 있다. 최초 Python 포트 검사는 재사용 옵션 없이 bind해 이 상태에서도 실패할 수 있었다. 현재 검사는 Node 서버와 동일하게 `SO_REUSEADDR`를 설정한다. 실제 LISTEN 서버가 점유한 포트는 계속 거절한다. 프로세스 종료나 커널 TCP 설정 변경은 수행하지 않는다.
+
+수정 뒤에도 중단되면 오류 코드가 함께 표시된다. `EADDRINUSE`일 때 root 터미널에서 `ss -antp '( sport = :3103 )'`로 LISTEN 프로세스와 TCP 상태를 확인한다. `EPERM` 또는 `EACCES`는 실행 환경의 소켓 권한 제한이다. 프로세스 용도를 확인하기 전에 `kill`, `fuser -k`로 종료하지 않는다. 이 오류는 배포 사전 검사에서 발생하므로 해당 실행의 운영 migration과 웹 전환은 시작되지 않는다.
+
+근거: [Python SO_REUSEADDR / TIME_WAIT](https://docs.python.org/3/library/socket.html), [Node 24.20.0 net.Socket](https://nodejs.org/download/release/v24.20.0/docs/api/net.html).
 
 ### 아이콘 HTTP 검사 실패 후 재확인
 
