@@ -2,5 +2,12 @@
 # Use together with compose.yaml; start only the db service, not the app.
 services:
   db:
+    # Bootstrap account stays separate from the application's non-superuser role.
+    # scripts/prepare-host-database.py creates undery and undery_test afterward.
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d postgres"]
     ports:
       - "127.0.0.1:5432:5432"

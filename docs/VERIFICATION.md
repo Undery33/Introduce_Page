@@ -1,5 +1,13 @@
 # 기반 구현 검증 기록
 
+## 2026-10-19 — 서버 DB 준비 절차 추가
+
+- 사용자 터미널 결과: undery-web active, 실행 중인 Docker 컨테이너 없음, TCP 5432 리스너 없음. 사용자가 OAuth 환경 파일 저장 완료를 알렸다. 비밀값은 읽거나 대화에 출력하지 않았다.
+- scripts/prepare-host-database.py 추가: 기존 대상 볼륨/컨테이너/자격증명/설정된 DATABASE_URL이 있으면 중단한다. 신규 구성에서만 PostgreSQL을 loopback 포트로 시작하고 bootstrap postgres와 별도 non-superuser 앱 계정을 만든다. 운영/시험 DB를 분리하며 OAuth 환경 파일을 비공개 백업 후 DB URL만 갱신한다. 웹 서비스 재시작과 migration은 수행하지 않는다.
+- Python 단위 검사 2개 통과: 기존/중복 DATABASE_URL 거절, 자격증명 파일의 0600과 덮어쓰기 거절. 스크립트 구문/--help 확인. 실제 Docker provisioning 실행을 검증한 것은 아니다.
+- 기존 npm run check 재실행 통과: 47개 검사, ESLint/TypeScript/Prisma. BUILD_COMMIT=admin-database-setup-local 프로덕션 빌드 통과. HTTP smoke는 현재 실행 정책의 서버 실행 제한으로 여전히 미통과다.
+- systemctl 읽기 재시도도 Operation not permitted로 거절됐다. 서버 DB 준비 스크립트의 실제 실행과 출력 확인은 사용자 터미널에서 필요하다.
+
 ## 2026-10-19 — 관리자 GitHub 로그인과 Coding 초안·발행
 
 - 기준: 원격 `feature/web`와 `codex/coding-design`의 `edddc7521c979ee78ea23ab2cddcdfeed43ce532`. `main`에는 앱이 없어 작업 기준으로 사용하지 않았다. 로컬은 GitHub 파일을 읽어 구성한 snapshot이므로 검증용 로컬 Git 이력을 upstream 이력으로 취급하지 않는다. 원격 변경은 원본 commit/tree를 부모·기반으로 연결한다.

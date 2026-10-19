@@ -49,16 +49,19 @@ GITHUB_CLIENT_SECRET=실제_Client_secret
 ADMIN_GITHUB_ID=127064386
 ```
 
-현재 호스트의 systemd 앱을 유지할 경우 DB는 호스트에서 접근 가능해야 한다. 기존 PostgreSQL이 있다면 그 운영 구성과 백업을 먼저 확인한다. 새 DB가 필요하면 저장소의 PostgreSQL Compose 서비스를 선택적으로 사용할 수 있다. 아래는 **설치 담당자가 검토 후 실행할 예시**이며 이번 작업에서 실행하지 않았다.
+현재 호스트의 systemd 앱을 유지할 경우 DB는 호스트에서 접근 가능해야 한다. 2026-10-19 사용자가 제공한 결과로 웹 서비스 active, 실행 중인 Docker 컨테이너 없음, TCP 5432 리스너 없음, OAuth 환경 파일 저장 완료를 확인했다. 중지된 컨테이너·기존 볼륨은 별도 확인이 필요하다. 기존 PostgreSQL이 있다면 그 운영 구성과 백업을 먼저 확인한다. 새 DB가 필요하면 저장소의 PostgreSQL Compose 서비스를 선택적으로 사용할 수 있다. 아래는 **설치 담당자가 검토 후 실행할 예시**이며 이번 작업에서 실행하지 않았다.
 
 ```sh
-# 먼저 /etc/undery/database-password를 root 소유 0600으로 만들고
-# 충분히 긴 무작위 비밀번호를 입력한다. 값은 로그나 셸 인수로 넘기지 않는다.
-# APP_IMAGE는 Compose 구문 검사에 필요한 자리표시자이며 app 서비스는 시작하지 않는다.
-APP_IMAGE=undery-site:unused docker compose \
-  -f compose.yaml -f deploy/compose.database-host.yaml \
-  --profile database up -d db
+# 기존 서버의 root 터미널에서 신뢰한 checkout의 스크립트를 실행한다.
+python3 scripts/prepare-host-database.py --check
+python3 scripts/prepare-host-database.py
 ```
+
+스크립트는 Docker 상태, 5432 바인딩, 기존 볼륨·컨테이너·자격증명을 먼저 확인한다. 이미 구성된 DB가 있으면 덮어쓰거나 초기화하지 않고 중단한다. 중단/실패 시 파일·볼륨을 임의로 지우지 말고 상태를 확인한다.
+
+새 구성이면 PostgreSQL 17 컨테이너만 시작한다. bootstrap `postgres`와 앱 `undery`의 비밀번호를 각각 무작위 생성하고 `/etc/undery/`에 0600으로 저장한다. 앱 계정에는 superuser·DB/role 생성 권한을 주지 않는다. `undery`와 `undery_test` DB를 만든 후 OAuth 설정을 유지하면서 app.env의 빈 DATABASE_URL을 갱신한다. 기존 환경 파일도 비공개로 백업한다. `/etc/undery/test.env`에는 시험 DB 전용 연결 정보를 기록한다. 비밀번호는 출력하지 않는다.
+
+호스트용 Compose override는 bootstrap 계정과 healthcheck를 postgres로 설정한다. override만 직접 시작하면 앱 역할·DB는 아직 없으므로 위 스크립트의 후속 생성 절차가 필요하다. 스크립트는 웹 서비스 재시작, 운영 migration, 배포를 수행하지 않는다.
 
 5432는 `127.0.0.1`에만 바인딩한다. 이미 쓰는 포트라면 새 DB를 시작하지 말고 기존 DB 구성을 확인한다. DB 데이터는 별도 named volume에 남는다. 앱까지 Compose로 운영하면 호스트용 override 없이 내부 주소 `db:5432`를 사용한다. Docker socket 권한을 CI에 추가하지 않는다.
 
