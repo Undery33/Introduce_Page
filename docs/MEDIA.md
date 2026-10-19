@@ -32,7 +32,7 @@
 
 ## 현재 서버에 적용
 
-이번 앱 커밋: `22c66a6a4b6569a8227bcb791373b861eb662204`. 배포 manifest는 이 커밋의 앱·자산·검사·배포 도구 파일 158개를 확인한다.
+이번 배포 커밋: `5bf83c90dbad931407f8a0237c227096df842794`. 최초 미디어 앱 커밋 `22c66a6a4b6569a8227bcb791373b861eb662204`에서 인증 HTTP 검사의 아이콘 이름 fixture만 수정했다. 배포 manifest는 수정된 커밋의 앱·자산·검사·배포 도구 파일 158개를 확인한다.
 
 이미 확인한 관리자 release에서 한 번 전환하는 절차다. `deploy/media-source.json`은 현재 release, 이전 Nginx/systemd 설정 해시, 새 앱 커밋과 소스 해시를 고정한다. 값이 다르면 덮어쓰지 않고 중단한다.
 
@@ -53,6 +53,19 @@ python3 scripts/deploy-host-admin.py --manifest deploy/media-source.json --apply
 6. 내부 및 HTTPS 프록시 경유 health가 성공해야 완료된다. `/api/health`의 `checks.database`와 `checks.media`가 모두 `ok`인지 확인한다. 실패하면 기존 웹 release·설정을 복구하며 운영 DB와 사진 파일은 유지한다.
 
 이 실행 환경은 TCP listen·Docker/systemd와 운영 경로 쓰기가 제한되어 실제 배포를 대신 실행하지 못한다. 배포 출력의 `PASS`, `배포 완료`, 오류 메시지로 서버 측 결과를 확인한다. 전체 비공개 로그·환경 파일·DB 덤프는 대화에 붙이지 않는다.
+
+### 아이콘 HTTP 검사 실패 후 재확인
+
+최초 시험 코드의 `test-` + UUID는 41자여서 아이콘 이름 최대 40자 제한에 걸렸다. API가 HTTP 400을 반환한 것은 입력 규칙에 맞는 동작이다. 시험 이름을 `test` + UUID(40자)로 수정하고 41자 거절 검사도 추가했다. 해당 실패는 배포 1/5 단계이며 이 시도의 운영 migration과 웹 전환은 시작되지 않았다.
+
+앞선 실행에서 시험 DB migration과 standalone 빌드를 마쳤으므로 서버 root 터미널에서 실패한 검사만 먼저 다시 실행할 수 있다. 이 명령은 시험 DB와 임시 이미지 디렉터리만 사용하며 웹 서비스를 재시작하지 않는다.
+
+```sh
+cd /home/undery/Documents/Codex/2026-10-19/github-introduce-page/work/Introduce_Page
+/opt/personal-site/node-v24.20.0-linux-x64/bin/node --env-file=/etc/undery/test.env --import tsx --test --test-isolation=none tests/integration/media-http.test.ts
+```
+
+통과한 뒤 위의 `deploy-host-admin.py --manifest deploy/media-source.json --apply`로 배포한다. 배포 스크립트는 수정된 커밋으로 다시 빌드하고 전체 사전 검사를 수행한다. 검사 파일만 수동 수정하거나 manifest 검증을 건너뛰지 않는다.
 
 전환 후 기존 편집 탭의 내용을 먼저 저장하고 새로고침한다. 사용자 아이콘과 본문 드래그 이미지, 사진 초안 재열기·공개·공개 중지를 브라우저에서 확인한다. 서버 측 HTTP 검사가 실제 마우스 드롭이나 한글 IME 조작을 대신 검증한 것은 아니다.
 

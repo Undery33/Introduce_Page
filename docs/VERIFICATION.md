@@ -1,5 +1,15 @@
 # 기반 구현 검증 기록
 
+## 2026-10-19 — 미디어 HTTP 검사의 아이콘 이름 길이 수정
+
+- 운영자가 전달한 통합 검사 실패: `POST /api/admin/icons`에서 기대 201 대신 400. 시험 fixture의 `test-`(5자) + UUID(36자)가 41자여서 실제 API의 1~40자 검증에 걸렸다. 인증·업로드 오류나 DB migration 실패로 해석하지 않는다.
+- 이름을 `test` + UUID(40자)로 바꾸고 41자 이름은 400 및 해당 검증 메시지를 반환하는지 먼저 검사하도록 보완했다. 앱의 입력 제한과 DB 스키마는 변경하지 않았다.
+- 실제 `createCustomIcon` 함수와 DB 대역으로 기존 41자 입력의 400 및 DB 쓰기 없음, 수정한 40자 입력의 허용을 재현했다. 실제 HTTP/DB 검사 성공을 대신하는 증거는 아니다.
+- 별도 검증 checkout에서 `npm run check` 통과: ESLint, TypeScript, 단위/handler 검사 53개, Prisma 스키마. `BUILD_COMMIT=5bf83c90dbad931407f8a0237c227096df842794 npm run build` 통과. `npm run test:smoke`는 제한 실행 환경에서 서버 시작 실패로 미통과다.
+- 수정 커밋 `5bf83c90dbad931407f8a0237c227096df842794`의 Git tree와 배포 manifest 입력 158개를 대조했다. 운영 기준 release와 이전 설정 해시는 유지했다. 원격 앱 코드는 동일하며 시험 파일만 바뀌었다.
+- 제공된 실패는 배포 1/5 단계의 시험 DB/HTTP 검사다. 배포 스크립트 순서상 이 시도의 운영 migration과 웹 전환은 시작되지 않았다. root 전용 백업 디렉터리의 DB dump 존재 여부는 직접 확인하지 않았다.
+- 남은 확인: 서버 root 터미널에서 수정된 `tests/integration/media-http.test.ts` 재실행. 통과 후 수정 manifest로 배포하며 기존 실패를 전체 기능 검증 성공으로 취급하지 않는다.
+
 ## 2026-10-19 — 사용자 아이콘·본문 이미지·VRChat 사진 관리
 
 - 기존 공개 글의 챕터는 이미 `?section=<id>`와 이전·다음 링크로 이동한다. 실제 CodingArticle 컴포넌트를 서버 렌더링해 첫·중간·마지막 챕터에서 해당 본문만 표시되고 이전·다음 URL과 버튼 조건이 맞는지 확인했다. 잘못된 section의 첫 챕터 복귀도 통과했다.

@@ -1,5 +1,5 @@
 {
-  "commit": "22c66a6a4b6569a8227bcb791373b861eb662204",
+  "commit": "5bf83c90dbad931407f8a0237c227096df842794",
   "previous_commit": "9378c630d1a6049bdc38c64e91ada63d796b46a5",
   "previous_release": "9378c630d1a6049bdc38c64e91ada63d796b46a5-admin-20261019T134814443732Z",
   "previous_nginx_sha256": "bee93b64fbda1019e088c753d5f1818a580c534f759790ea56aa8b1a685c87b3",
@@ -158,7 +158,7 @@
     "tests/database.sql": "43dab26104124527b3b524af83f9f22954d01ed3",
     "tests/domain.test.ts": "55b891b5fc740cace11785b1fe3d9ddc2f77d39a",
     "tests/integration/admin-database.test.ts": "c64c6fb879b0725be12b02b5bcf0d163c03bec43",
-    "tests/integration/media-http.test.ts": "527b873e4748d4a81d972fc89576d6b20afb0ac4",
+    "tests/integration/media-http.test.ts": "96399329f77cc96b95c2241042fa3ab92a8786e8",
     "tests/proxy.py": "75194ef33da7f7ef455d540f78ee480b606f3951",
     "tests/test_host_database_setup.py": "cda01dbdb034ee248051571f286db98ced722258",
     "tests/test_host_deploy.py": "01b3374db636247da34e144ab12eb9a7f3e1ba15",
