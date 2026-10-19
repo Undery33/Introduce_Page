@@ -1,0 +1,6 @@
+# Optional override when the app uses the existing host systemd service.
+# Use together with compose.yaml; start only the db service, not the app.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"

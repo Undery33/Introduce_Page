@@ -7,6 +7,10 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       SITE_URL: https://undery.link
+    # Kept outside Git; the same file must be supplied to the migration command.
+    env_file:
+      - path: ${APP_ENV_FILE:-/etc/undery/app.env}
+        required: false
     init: true
     security_opt:
       - no-new-privileges:true
@@ -20,7 +24,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Opt-in until persistence and authentication are implemented and tested.
+  # Opt-in. Back up and validate migrations before enabling production writes.
   db:
     profiles: [database]
     image: postgres:17-bookworm

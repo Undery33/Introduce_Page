@@ -1,5 +1,15 @@
 # 첫 구현 기반
 
+## 2026-10-19 현재 상태
+
+`feature/web`의 `edddc752`를 기준으로 관리자 GitHub OAuth·서버 세션과 Coding 글 작성 기능을 추가했다. `/admin`은 로그인 및 글 관리 화면이며 새 글·목차 Markdown 편집·미리보기·초안 저장·발행·공개 중지를 지원한다. 운영 DB에 연결하면 공개된 글만 기존 Coding 목록/검색/상세/사이트맵에 표시한다. 미설정 환경에서 관리자 API는 닫힌 상태다.
+
+초안 테이블과 공개 글을 분리하고 서버 권한·Origin/CSRF·버전 충돌 검사를 적용했다. 새 분류 FRONTEND/BACKEND와 보존형 migration을 준비했다. 기존 WEB/PROGRAMMING 자료가 있으면 수동 이전 검토 전 migration을 중단한다. 직접 사진 업로드·소개 편집·댓글은 아직 구현하지 않았다.
+
+운영 서버 파일은 `edddc752` standalone release를 가리킨다. 새 관리자 변경은 배포하지 않았다. 실제 DB migration·OAuth·HTTP/브라우저 검증은 실행 권한과 비공개 설정이 준비된 뒤 수행한다. 자세한 절차는 [관리자 운영 안내](ADMIN.md), 이번 검사 결과는 [검증 기록](VERIFICATION.md)에 있다.
+
+아래는 2026-10-06까지의 구현 이력이며, ‘미구현’·‘운영 미배포’ 표현은 당시 상태다.
+
 최초 구현 기준: `main`의 `5d233a5` (2026-09-26 개정 계획).
 최초 기반 브랜치: `codex/foundation`. 루트 도안 작업 브랜치: `codex/undery-homepage`.
 
@@ -77,20 +87,20 @@ DB 준비 후 `.env.example`을 참고해 별도의 비공개 환경 설정에 `
 
 ## 구조와 데이터 경계
 
-| 위치                                          | 역할                                    |
-| --------------------------------------------- | --------------------------------------- |
-| `src/app/page.tsx`, `src/app/home.module.css` | 루트 목적지 안내와 전용 스타일          |
-| `src/lib/home.ts`                             | 루트 카드 문구와 SNS·메일 주소 설정     |
-| `src/app/{coding,game,whoami}`                | 독립 영역 화면·메타데이터·사이트맵      |
-| `src/components/section-shell.tsx`            | 영역별 레이아웃과 공통 디자인           |
-| `src/lib/sections.ts`                         | 경로·메뉴·분류의 기준                   |
-| `src/app/coding/coding-shell.tsx`, `src/lib/coding.ts` | Coding 전용 레이아웃·분류·공용 필터 |
-| `src/lib/coding-store.ts` | 서버의 공개 자료 조회와 개발 예시 분리 |
-| `src/lib/public-profile.ts`                   | 공개 상태·필드 공개 여부를 적용하는 DTO |
-| `src/lib/comment-input.ts`                    | 클라이언트/서버 공용 입력 규칙          |
-| `prisma/`                                     | 데이터 모델·변경 이력                   |
-| `scripts/smoke.mjs`                           | 실제 프로덕션 서버 HTTP 회귀 검사       |
-| `deploy/nginx/`                               | HTTPS·www·HTTP 경로 정책 설정안         |
+| 위치                                                   | 역할                                    |
+| ------------------------------------------------------ | --------------------------------------- |
+| `src/app/page.tsx`, `src/app/home.module.css`          | 루트 목적지 안내와 전용 스타일          |
+| `src/lib/home.ts`                                      | 루트 카드 문구와 SNS·메일 주소 설정     |
+| `src/app/{coding,game,whoami}`                         | 독립 영역 화면·메타데이터·사이트맵      |
+| `src/components/section-shell.tsx`                     | 영역별 레이아웃과 공통 디자인           |
+| `src/lib/sections.ts`                                  | 경로·메뉴·분류의 기준                   |
+| `src/app/coding/coding-shell.tsx`, `src/lib/coding.ts` | Coding 전용 레이아웃·분류·공용 필터     |
+| `src/lib/coding-store.ts`                              | 서버의 공개 자료 조회와 개발 예시 분리  |
+| `src/lib/public-profile.ts`                            | 공개 상태·필드 공개 여부를 적용하는 DTO |
+| `src/lib/comment-input.ts`                             | 클라이언트/서버 공용 입력 규칙          |
+| `prisma/`                                              | 데이터 모델·변경 이력                   |
+| `scripts/smoke.mjs`                                    | 실제 프로덕션 서버 HTTP 회귀 검사       |
+| `deploy/nginx/`                                        | HTTPS·www·HTTP 경로 정책 설정안         |
 
 소개는 완전한 revision 단위로 저장한다. 공개 변경은 트랜잭션에서 기존 공개본을 보관 상태로 옮긴 뒤 새 revision을 공개해야 한다. DB의 부분 유일 인덱스로 공개 revision을 1개로 제한한다. 인적사항·MBTI·역량·강점은 최초 비공개이며 공개 DTO에 허용한 필드만 반환한다.
 
@@ -107,7 +117,7 @@ DB 준비 후 `.env.example`을 참고해 별도의 비공개 환경 설정에 `
 
 루트 도안과 관련 메타데이터·사이트맵·Nginx 설정안·검사 코드를 갱신했다. 검증 결과는 `docs/VERIFICATION.md`에서 확인하며, 기존 검증 결과를 새 루트의 검증으로 재사용하지 않는다. SNS·메일 실제 주소 연결과 사용자 피드백에 따른 도안 조정은 이후 작업이다. Coding은 2026-10-06 사용자 시안과 후속 디자인 요청을 반영했으며 실제 자료는 DB 연결 후 제공한다.
 
-기능 기반의 다음 항목은 **관리자 인증 + DB 연결**이다. 별도 구현 요청에 따라 검증된 인증 라이브러리와 GitHub OAuth를 연결하고 사용자 숫자 ID만 허용한다. 직접 관리자 API 호출, 다른 계정, 세션 만료, CSRF, 로그아웃, `/admin` 복귀를 검사한다. OAuth 비밀값은 GitHub에 기록하지 않는다.
+2026-10-06 당시 다음 항목은 **관리자 인증 + DB 연결**이었다. 2026-10-19 구현과 인증 방식, 남은 실제 연동 검사는 상단 현재 상태와 ADMIN.md를 기준으로 한다. OAuth 비밀값은 GitHub에 기록하지 않는다.
 
 그 뒤 Jenkins 검증 작업을 연결하고 별도의 제한된 배포 agent에서 이미지 digest 발행·검증·백업·migration·교체·복구를 구현한다. 현재 Jenkinsfile은 CI까지이며 자동 배포 완료를 의미하지 않는다. Jenkins 관리자 설정은 이번 작업에서 변경하지 않았다.
 

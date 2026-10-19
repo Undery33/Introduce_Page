@@ -1,6 +1,7 @@
 FROM node:24.20.0-bookworm-slim AS dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
 RUN npm ci --no-fund
 
 FROM dependencies AS build

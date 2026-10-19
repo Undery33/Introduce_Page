@@ -27,6 +27,7 @@ export type CodingSection = {
   id: string;
   title: string;
   paragraphs: readonly string[];
+  markdown?: string;
   code?: { language: string; value: string };
 };
 
@@ -140,6 +141,7 @@ export function filterCodingPosts(
         ...post.tags,
         ...post.sections.flatMap((section) => [
           section.title,
+          section.markdown ?? "",
           ...section.paragraphs,
           section.code?.value ?? "",
         ]),

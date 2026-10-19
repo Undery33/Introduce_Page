@@ -1,5 +1,18 @@
 # 기반 구현 검증 기록
 
+## 2026-10-19 — 관리자 GitHub 로그인과 Coding 초안·발행
+
+- 기준: 원격 `feature/web`와 `codex/coding-design`의 `edddc7521c979ee78ea23ab2cddcdfeed43ce532`. `main`에는 앱이 없어 작업 기준으로 사용하지 않았다. 로컬은 GitHub 파일을 읽어 구성한 snapshot이므로 검증용 로컬 Git 이력을 upstream 이력으로 취급하지 않는다. 원격 변경은 원본 commit/tree를 부모·기반으로 연결한다.
+- Node 24.20.0, npm 11.19.0, Next.js 16.3.6, Prisma 6.19.3. 네트워크 패키지 조회가 차단되어 기존 npm 캐시에서 잠금 파일의 의존성을 설치했다. 새 의존성은 추가하지 않았다. Prisma 캐시 경로만 쓰기 가능한 임시 위치로 지정해 client 생성을 완료했다.
+- 최종 `XDG_CACHE_HOME=/tmp/introduce-page-prisma-cache npm run check` 통과: ESLint, Next route type 생성, TypeScript, **실제 단위/직접 handler 검사 47개**, Prisma schema validation. 기존 35개와 관리자 관련 12개다. 인증 미설정 시 닫힘, 실제 숫자 ID, PKCE/state 구성, Origin, 모의 GitHub 교환 후 ID 확인, 직접 작성 handler 거절, JSON 바이트 제한, 입력 규칙, 안전한 Markdown 출력을 포함한다. 실제 GitHub 인증 검사는 아니다.
+- `tsx --test` CLI는 제한 환경에서 IPC 소켓 생성이 거절됐다. Node 24의 `--import tsx --test --test-isolation=none`으로 실제 47개 test case 실행을 확인하고 npm 스크립트에 적용했다. 단순 파일 개수만 출력된 실행을 47개 통과 근거로 사용하지 않았다.
+- 최종 `BUILD_COMMIT=admin-posts-local XDG_CACHE_HOME=/tmp/introduce-page-prisma-cache npm run build` 통과. TypeScript CLI subprocess가 제한 환경에서 실패해 Next의 TypeScript 5 in-process 검사와 worker threads를 사용한다. 관리자 및 API의 동적 route와 standalone 산출물을 생성했다. typecheck를 끄거나 오류를 무시하지 않았다.
+- **HTTP smoke 미통과/환경 차단:** `npm run test:smoke`를 실행했으나 standalone 프로세스 시작에 실패했다. 직접 같은 서버를 실행하여 `listen EPERM: operation not permitted 127.0.0.1:3101`을 확인했다. HTTP 응답, 관리자 실제 화면·모바일·IME 상호작용을 이번 세션에서 검증했다고 주장하지 않는다. 기존 2026-10-06 HTTP 성공 기록은 이번 변경의 검증 근거가 아니다.
+- 실제 PostgreSQL migration/저장·발행 검사는 아직 실행하지 않았다. 별도 `_test` DB에서 실행할 `npm run test:admin:db`를 추가했다. 초안 격리, 공개본 유지, 버전 충돌, 중복 slug 롤백, 공개 중지·재발행 검사를 준비했으며 테스트 코드 존재를 실행 성공으로 간주하지 않는다.
+- 서버 파일 읽기에서 기존 standalone release 경로와 systemd/Nginx 설정을 확인했다. systemd 버스 및 Docker socket 접근은 거절됐다. `/etc`·`/opt` 쓰기, 서비스 교체·재시작, 운영 DB 변경, OAuth App 등록은 수행하지 않았다. 실제 비밀값을 읽거나 저장소에 기록하지 않았다.
+- 보완: CI의 앱 없는 main checkout을 feature/web으로 변경한 설정안, Prisma 생성이 가능한 Docker 빌드 순서, DB 연결 health, Nginx 인증 요청 제한·callback 접근 로그 제외·관리자 본문 크기 제한, systemd 환경 파일 drop-in과 호스트 DB용 loopback override를 준비했다. Jenkins 작업이나 Nginx 운영 설정에 적용한 것은 아니다.
+- 다음 필수 검증은 ADMIN.md의 DB migration/통합 검사, GitHub 실제 로그인과 다른 계정 거절·세션/CSRF·로그아웃, 브라우저 편집부터 공개 중지까지의 흐름, 기존 HTTP 회귀 검사다. 이 확인 전에는 초안 PR을 배포 완료로 취급하지 않는다.
+
 ## 2026-10-06 — Coding 한글 입력·다중 태그·이동 경로 보완
 
 - 검색창의 제어값을 URL 대신 동기적인 로컬 입력 상태로 관리한다. IME 조합 중에는 주소 쓰기를 보류하고 조합 완료 시 반영하며, 지연된 자기 URL 갱신은 최신 입력을 덮어쓰지 않는다. 외부 이동과 뒤로 가기는 주소의 검색어를 복원한다.
