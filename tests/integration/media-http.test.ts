@@ -37,7 +37,9 @@ test(
     const images: string[] = [],
       photos: string[] = [],
       drafts: string[] = [];
-    const iconLabel = `test-${randomUUID()}`;
+    // Keep the full UUID while exercising the API's 40-character boundary.
+    const iconLabel = `test${randomUUID()}`;
+    assert.equal(iconLabel.length, 40);
     let server: ReturnType<typeof spawn> | undefined;
     let checks = 0;
     async function request(
@@ -186,6 +188,16 @@ test(
       }
       const first = `/media/${images[0]}.webp`,
         second = `/media/${images[1]}.webp`;
+      const invalidIcon = await mutate(
+        "/api/admin/icons",
+        { label: `${iconLabel}x`, url: first },
+        "POST",
+        400,
+      );
+      assert.equal(
+        invalidIcon.error,
+        "아이콘 이름(1~40자)과 이미지를 확인하십시오.",
+      );
       await mutate(
         "/api/admin/icons",
         { label: iconLabel, url: first },
