@@ -11,20 +11,25 @@
     "start": "HOSTNAME=127.0.0.1 node .next/standalone/server.js",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "node --import tsx --test --test-isolation=none tests/*.test.ts",
     "test:smoke": "node scripts/smoke.mjs",
     "check": "npm run lint && npm run typecheck && npm test && npm run db:validate",
     "db:validate": "node scripts/validate-schema.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "format": "prettier --write src tests scripts *.ts *.mjs package.json tsconfig.json compose.yaml docs",
-    "format:check": "prettier --check src tests scripts *.ts *.mjs package.json tsconfig.json compose.yaml docs"
+    "format:check": "prettier --check src tests scripts *.ts *.mjs package.json tsconfig.json compose.yaml docs",
+    "postinstall": "prisma generate",
+    "test:admin": "node --import tsx --test --test-isolation=none tests/admin*.test.ts",
+    "test:admin:db": "node --import tsx --test --test-isolation=none tests/integration/admin-database.test.ts",
+    "test:admin:media": "node --import tsx --test --test-isolation=none tests/integration/media-http.test.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
     "next": "16.3.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sharp": "0.35.4"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

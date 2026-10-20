@@ -1,5 +1,5 @@
 // Foundation CI only. Image publishing and deployment are separate next steps.
-// Configure this Pipeline-from-SCM job for the original repository's main only.
+// Configure this Pipeline-from-SCM job for the original repository's feature/web only (until main contains the app).
 pipeline {
   agent { label 'personal-site-build' }
   options {
@@ -14,9 +14,9 @@ pipeline {
     NODE_OPTIONS = '--max-old-space-size=1536'
   }
   stages {
-    stage('Checkout trusted main') {
+    stage('Checkout trusted feature/web') {
       steps {
-        git branch: 'main', url: 'https://github.com/Undery33/Introduce_Page.git'
+        git branch: 'feature/web', url: 'https://github.com/Undery33/Introduce_Page.git'
         script { env.BUILD_COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim() }
       }
     }

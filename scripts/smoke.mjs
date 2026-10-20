@@ -5,13 +5,27 @@ import { setTimeout as delay } from "node:timers/promises";
 const external = process.env.SMOKE_BASE_URL;
 const port = process.env.SMOKE_PORT || "3101";
 const origin = external || `http://127.0.0.1:${port}`;
+// This suite expects an empty, unconfigured app. Never inherit production data.
+const smokeEnvironment = { ...process.env, HOSTNAME: "127.0.0.1", PORT: port };
+for (const key of [
+  "DATABASE_URL",
+  "GITHUB_CLIENT_ID",
+  "GITHUB_CLIENT_SECRET",
+  "ADMIN_GITHUB_ID",
+  "MEDIA_DIRECTORY",
+])
+  smokeEnvironment[key] = "";
 let log = "";
 const server = external
   ? null
   : spawn(process.execPath, [".next/standalone/server.js"], {
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, HOSTNAME: "127.0.0.1", PORT: port },
+      env: smokeEnvironment,
     });
+let startError;
+server?.on("error", (error) => {
+  startError = error;
+});
 server?.stdout.on("data", (data) => {
   log = (log + data).slice(-4000);
 });
@@ -200,6 +214,7 @@ function assertCodingArchive(html, path) {
 try {
   let ready = false;
   for (let attempt = 0; attempt < 120; attempt++) {
+    if (startError) throw startError;
     if (server && server.exitCode !== null)
       throw new Error(`Server exited: ${log}`);
     try {
@@ -214,6 +229,17 @@ try {
     await delay(250);
   }
   assert.ok(ready, `Server did not become ready: ${log}`);
+  const configuration = await (await fetch(origin + "/api/health")).json();
+  assert.equal(
+    configuration.checks.database,
+    "not-connected",
+    "Use an isolated smoke server without a database",
+  );
+  assert.equal(
+    configuration.checks.authentication,
+    "not-configured",
+    "Use an isolated smoke server without OAuth settings",
+  );
   for (const path of ["/", "/?from=profile"]) {
     const response = await request(path, 200);
     assert.equal(response.headers.get("location"), null);
@@ -432,8 +458,56 @@ try {
   const privacy = await (await request("/privacy", 200)).text();
   assertComingSoon(privacy, "/privacy");
   const admin = await (await request("/admin", 200)).text();
-  assertComingSoon(admin, "/admin");
-  for (const path of ["/api/admin/posts", "/api/comments", "/api/upload"])
+  assert.match(bodyMarkup(admin), /관리자 로그인/);
+  assert.match(bodyMarkup(admin), /로그인 설정이 필요합니다/);
+  assert.doesNotMatch(bodyMarkup(admin), /새 글 작성|초안 저장/);
+  await request("/api/admin/posts", 401, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: '{"role":"admin"}',
+  });
+  await request("/api/admin/posts/unknown", 401, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  await request("/api/admin/posts/unknown/publish", 401, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  await request("/api/admin/posts/unknown/unpublish", 401, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  await request("/api/auth/github", 503, { method: "POST" });
+  await request("/api/auth/github/callback?state=forged&code=forged", 503);
+  await request("/api/auth/logout", 403, { method: "POST" });
+  const newPost = await request("/admin/posts/new", 307);
+  assert.equal(newPost.headers.get("location"), "/admin");
+  for (const path of [
+    "/api/admin/images",
+    "/api/admin/icons",
+    "/api/admin/photos",
+    "/api/admin/photos/unknown/publish",
+    "/api/admin/photos/unknown/unpublish",
+  ])
+    await request(path, 401, { method: "POST", body: "untrusted" });
+  await request("/api/admin/photos/unknown", 401, {
+    method: "PUT",
+    body: "untrusted",
+  });
+  for (const path of [
+    "/admin/photos",
+    "/admin/photos/new",
+    "/admin/photos/unknown",
+  ]) {
+    const response = await request(path, 307);
+    assert.equal(response.headers.get("location"), "/admin");
+  }
+  await request("/media/00000000000000000000000000000000.webp", 404);
+  for (const path of ["/api/comments", "/api/upload"])
     await request(path, 404, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

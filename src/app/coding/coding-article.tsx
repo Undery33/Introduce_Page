@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MarkdownContent } from "@/components/markdown-content";
 import { codingListHref, type CodingPost } from "@/lib/coding";
 import { CodingShell } from "./coding-shell";
 import { CodingIcon } from "./coding-icons";
@@ -81,6 +82,9 @@ export function CodingArticle({
             <h2 id="chapter-heading">
               {index + 1}. {section.title}
             </h2>
+            {section.markdown !== undefined && (
+              <MarkdownContent source={section.markdown} />
+            )}
             {section.paragraphs.map((paragraph, paragraphIndex) => (
               <p key={paragraphIndex}>{paragraph}</p>
             ))}

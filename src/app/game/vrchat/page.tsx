@@ -1,5 +1,7 @@
 import { pageMetadata } from "@/lib/metadata";
 import { VrchatDraft } from "./vrchat-draft";
+import { getVrchatPhotos } from "@/lib/vrchat-store";
+export const dynamic = "force-dynamic";
 
 export const metadata = pageMetadata(
   "UNDERY — A small place for our moments",
@@ -7,6 +9,9 @@ export const metadata = pageMetadata(
   "/game/vrchat",
 );
 
-export default function VrchatPage() {
-  return <VrchatDraft />;
+export default async function VrchatPage() {
+  const photos = (await getVrchatPhotos())
+    .filter((photo) => photo.showOnHome)
+    .slice(0, 6);
+  return <VrchatDraft photos={photos} />;
 }

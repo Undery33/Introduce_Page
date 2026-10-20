@@ -1,4 +1,5 @@
 import type { SVGProps } from "react";
+import { imageIdFromUrl } from "@/lib/media";
 
 export type CodingIconName =
   | "search"
@@ -10,12 +11,24 @@ export type CodingIconName =
   | "server"
   | "globe"
   | "ubuntu"
-  | "rocky";
+  | "rocky"
+  | `/media/${string}.webp`;
 
 export function CodingIcon({
   name,
   ...props
 }: SVGProps<SVGSVGElement> & { name: CodingIconName }) {
+  if (imageIdFromUrl(name))
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true" {...props}>
+        <image
+          href={name}
+          width="48"
+          height="48"
+          preserveAspectRatio="xMidYMid meet"
+        />
+      </svg>
+    );
   if (name === "github")
     return (
       <svg

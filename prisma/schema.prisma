@@ -14,6 +14,8 @@ enum PublicationStatus {
 }
 
 enum CodingCategory {
+  FRONTEND
+  BACKEND
   INFRASTRUCTURE
   WEB
   NETWORK
@@ -43,6 +45,10 @@ model CodingPost {
   slug        String            @unique
   title       String
   markdown    String
+  description String            @default("")
+  icon        String            @default("code")
+  sections    Json              @default("[]")
+  draft       CodingPostDraft?
   category    CodingCategory
   tags        String[]          @default([])
   status      PublicationStatus @default(DRAFT)
@@ -193,10 +199,78 @@ model InstagramPost {
   createdAt DateTime @default(now())
 }
 
-// Only the configured owner may be admitted by the future OAuth implementation.
+// Only the configured numeric owner ID may be admitted by GitHub OAuth.
 // No visitor account model or browser-supplied role exists.
 model AdminIdentity {
   id           String   @id @default(cuid())
   githubUserId String   @unique
   createdAt    DateTime @default(now())
+}
+
+// Draft edits never change the public CodingPost until an explicit publication.
+model CodingPostDraft {
+  id               String         @id @default(cuid())
+  postId           String?        @unique
+  post             CodingPost?    @relation(fields: [postId], references: [id], onDelete: Restrict)
+  slug             String
+  title            String
+  description      String
+  category         CodingCategory
+  icon             String         @default("code")
+  tags             String[]       @default([])
+  sections         Json
+  version          Int            @default(1)
+  publishedVersion Int?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model AdminSession {
+  tokenHash    String   @id
+  githubUserId String
+  csrfToken    String
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@index([expiresAt])
+}
+
+model AdminLoginAttempt {
+  stateHash   String   @id
+  browserHash String
+  verifier    String
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+}
+
+// Image bytes live outside releases. Unpublished images require an admin session.
+model UploadedImage {
+  id        String   @id
+  width     Int
+  height    Int
+  bytes     Int
+  createdAt DateTime @default(now())
+  icons     CustomIcon[]
+}
+
+model CustomIcon {
+  id        String        @id @default(cuid())
+  label     String
+  imageId   String
+  image     UploadedImage @relation(fields: [imageId], references: [id], onDelete: Restrict)
+  createdAt DateTime      @default(now())
+}
+
+// Editing a photo never modifies its public snapshot until publication.
+model VrchatPhoto {
+  id               String            @id @default(cuid())
+  legacySrc        String?           @unique
+  draft            Json
+  published        Json?
+  status           PublicationStatus @default(DRAFT)
+  version          Int               @default(1)
+  publishedVersion Int?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }

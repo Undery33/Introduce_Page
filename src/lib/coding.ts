@@ -27,6 +27,7 @@ export type CodingSection = {
   id: string;
   title: string;
   paragraphs: readonly string[];
+  markdown?: string;
   code?: { language: string; value: string };
 };
 
@@ -35,7 +36,8 @@ export type CodingPost = {
   title: string;
   description: string;
   category: CodingCategory;
-  icon: "code" | "server" | "globe" | "ubuntu" | "rocky";
+  icon:
+    "code" | "server" | "globe" | "ubuntu" | "rocky" | `/media/${string}.webp`;
   publishedAt: string;
   updatedAt: string;
   tags: readonly string[];
@@ -140,6 +142,7 @@ export function filterCodingPosts(
         ...post.tags,
         ...post.sections.flatMap((section) => [
           section.title,
+          section.markdown ?? "",
           ...section.paragraphs,
           section.code?.value ?? "",
         ]),

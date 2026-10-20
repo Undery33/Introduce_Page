@@ -11,3 +11,5 @@ src/generated/
 .DS_Store
 backups/
 data/
+__pycache__/
+*.py[cod]

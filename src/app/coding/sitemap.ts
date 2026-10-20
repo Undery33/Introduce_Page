@@ -1,8 +1,16 @@
 import type { MetadataRoute } from "next";
-import { sections } from "@/lib/sections";
 import { siteOrigin } from "@/lib/metadata";
-export default function sitemap(): MetadataRoute.Sitemap {
-  return sections.coding.sitemap.map((path) => ({
-    url: `${siteOrigin}${path}`,
-  }));
+import { getCodingPosts } from "@/lib/coding-store";
+export const dynamic = "force-dynamic";
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const posts = await getCodingPosts();
+  return [
+    { url: `${siteOrigin}/coding` },
+    ...posts
+      .filter((post) => !post.isExample)
+      .map((post) => ({
+        url: `${siteOrigin}/coding/${post.slug}`,
+        lastModified: post.updatedAt,
+      })),
+  ];
 }

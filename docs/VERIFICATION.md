@@ -1,5 +1,88 @@
 # 기반 구현 검증 기록
 
+## 2026-10-20 KST — 미디어 운영 배포 완료 확인
+
+- 사용자가 배포 명령 실행 후 “완료”를 보고했다. 서버 current 링크가 `690d44f69f21b0ef42518e9c14d9e35dca89a61a-admin-20261019T221441846923Z` release로 전환된 것을 직접 확인했다.
+- 대표 HTTPS `https://undery.link/api/health`를 curl로 조회했다. `status=ok`, `stage=admin-media`, `commit=690d44f69f21b0ef42518e9c14d9e35dca89a61a`, `checks.application/database/media=ok`, `checks.authentication=configured`를 확인했다.
+- 비인증 HTTPS GET: `/admin` 200, `/admin/photos` 307, `/game/vrchat` 200, `/game/vrchat/photo` 200. 사용자 세션 쿠키를 사용하거나 운영 콘텐츠를 생성하지 않았다.
+- 웹 검색 도구의 health 열기와 실행 환경의 localhost:3000 접근은 실패했으나 동일 실행 환경에서 대표 HTTPS curl은 성공했다. localhost 접근 실패를 운영 장애로 해석하지 않는다.
+- 상세 배포 로그와 이번 인증 미디어 HTTP 검사의 개별 결과는 별도로 전달받지 않았다. 완료 보고와 실제 release/health 확인을 근거로 운영 반영을 기록하며 백업 복원 등 모든 단계를 직접 재검증했다고 주장하지 않는다.
+- 남은 사용자 확인: 관리자 새로고침 후 사용자 아이콘 등록·재선택, 본문 드래그 이미지·한글 편집·초안 재열기, 발행 글 챕터 이동, VRChat 사진 추가·교체·공개·공개 중지. 초안 저장만으로 새 내용이 공개되지 않는 흐름을 포함한다.
+- 현재 상태와 사용 안내 문서만 갱신했다. 앱 코드·manifest·DB·서비스 설정은 변경하지 않았다. 완료한 이전 release 기준 manifest는 다시 적용하지 않는다.
+
+## 2026-10-20 KST — 배포 사전 포트 검사 보완
+
+- 운영자가 `시험 포트 3103를 사용할 수 없습니다`를 보고했다. 기존 포트 검사는 OSError의 원인을 구분하지 않고 재사용 옵션 없이 bind했다. 장애 순간의 TCP 상태는 확보하지 못했으므로 실제 점유와 TIME_WAIT 중 어느 상태였는지는 확정하지 않는다. 이후 확인한 `/proc/net/tcp`, `/proc/net/tcp6`에는 3103 소켓이 없었으며 기존 운영 release 링크가 유지됐다.
+- `check_test_port`에 Node 서버와 동일한 SO_REUSEADDR를 적용했다. 실제 TIME_WAIT 연결을 만들어 기존 bind가 EADDRINUSE로 실패하고 수정 함수는 성공하는지 확인했다. 실제 LISTEN 서버 점유는 계속 거절하며 EPERM은 포트 점유와 구분해 표시한다. 임의 프로세스 종료나 TCP 커널 설정 변경은 하지 않았다.
+- `python3 -m unittest discover -s tests -p 'test_host*.py' -v`: 8개 모두 통과, skip 없음. 이 중 실제 loopback TCP 두 검사는 TIME_WAIT 재사용과 활성 listener 거절을 검증한다. 수정 함수로 3101·3102·3103의 현재 사용 가능 여부도 모두 통과했다.
+- 원본 checkout의 npm run check는 이전 root 빌드가 만든 .next/types 쓰기 권한으로 중단됐다. 별도 검증 checkout에서 npm run check 통과: ESLint, TypeScript, 단위/handler 검사 53개, Prisma 스키마. BUILD_COMMIT=690d44f69f21b0ef42518e9c14d9e35dca89a61a npm run build 통과.
+- 이번 실행 환경에서는 loopback TCP가 허용돼 동일 빌드의 npm run test:smoke가 **78개 HTTP 검사 모두 통과**했다. 앞선 실행 환경의 listen 차단 기록과 구분한다. 비인증 공개 화면/닫힌 API 검사이며 시험 DB를 사용하는 인증 미디어 통합 검사나 실제 브라우저 조작을 대신하지 않는다.
+- 수정 커밋 `690d44f69f21b0ef42518e9c14d9e35dca89a61a`의 Git tree와 로컬 배포 manifest 입력 158개를 대조했다. 변경은 배포 도구·그 검사·manifest·문서다. 앱 기능, migration, 운영 기준 release와 이전 설정 해시는 유지했다.
+- 보고된 오류는 preflight 단계이므로 해당 실행의 운영 migration과 웹 전환은 시작되지 않았다. 서버 root 터미널에서 수정 manifest로 배포를 재실행해야 한다. 인증 미디어 HTTP 검사의 사용자 재실행 성공 결과는 아직 전달받지 않았다.
+
+## 2026-10-19 — 미디어 HTTP 검사의 아이콘 이름 길이 수정
+
+- 운영자가 전달한 통합 검사 실패: `POST /api/admin/icons`에서 기대 201 대신 400. 시험 fixture의 `test-`(5자) + UUID(36자)가 41자여서 실제 API의 1~40자 검증에 걸렸다. 인증·업로드 오류나 DB migration 실패로 해석하지 않는다.
+- 이름을 `test` + UUID(40자)로 바꾸고 41자 이름은 400 및 해당 검증 메시지를 반환하는지 먼저 검사하도록 보완했다. 앱의 입력 제한과 DB 스키마는 변경하지 않았다.
+- 실제 `createCustomIcon` 함수와 DB 대역으로 기존 41자 입력의 400 및 DB 쓰기 없음, 수정한 40자 입력의 허용을 재현했다. 실제 HTTP/DB 검사 성공을 대신하는 증거는 아니다.
+- 별도 검증 checkout에서 `npm run check` 통과: ESLint, TypeScript, 단위/handler 검사 53개, Prisma 스키마. `BUILD_COMMIT=5bf83c90dbad931407f8a0237c227096df842794 npm run build` 통과. `npm run test:smoke`는 제한 실행 환경에서 서버 시작 실패로 미통과다.
+- 수정 커밋 `5bf83c90dbad931407f8a0237c227096df842794`의 Git tree와 배포 manifest 입력 158개를 대조했다. 운영 기준 release와 이전 설정 해시는 유지했다. 원격 앱 코드는 동일하며 시험 파일만 바뀌었다.
+- 제공된 실패는 배포 1/5 단계의 시험 DB/HTTP 검사다. 배포 스크립트 순서상 이 시도의 운영 migration과 웹 전환은 시작되지 않았다. root 전용 백업 디렉터리의 DB dump 존재 여부는 직접 확인하지 않았다.
+- 남은 확인: 서버 root 터미널에서 수정된 `tests/integration/media-http.test.ts` 재실행. 통과 후 수정 manifest로 배포하며 기존 실패를 전체 기능 검증 성공으로 취급하지 않는다.
+
+## 2026-10-19 — 사용자 아이콘·본문 이미지·VRChat 사진 관리
+
+- 기존 공개 글의 챕터는 이미 `?section=<id>`와 이전·다음 링크로 이동한다. 실제 CodingArticle 컴포넌트를 서버 렌더링해 첫·중간·마지막 챕터에서 해당 본문만 표시되고 이전·다음 URL과 버튼 조건이 맞는지 확인했다. 잘못된 section의 첫 챕터 복귀도 통과했다.
+- 사용자 아이콘의 이미지·이름 등록과 재선택, 본문 드래그/선택/붙여넣기 이미지 업로드와 본문 안 표시를 추가했다. 기존 Markdown 저장과 공개 스냅샷 구조는 유지한다.
+- VRChat 사진 추가·교체·설명·월·태그·순서·공개/비공개와 기존 여섯 사진의 편집을 구현했다. 새 초안과 공개본을 분리하며 공개 자료만 두 VRChat 페이지에 전달한다. 최초 기존 사진 수정도 발행 전까지 원래 사진을 유지하도록 작성했다.
+- Sharp 0.35.4는 기존 Next 의존성에 있던 정확한 버전을 직접 의존성으로 선언했다. 파일 시그니처·실제 스트림 크기·디코딩을 검사한다. EXIF 방향 적용, 메타데이터 제거, WebP 변환, 투명도 보존을 실제 픽셀 데이터로 검사했다.
+- 별도 `/tmp/undery-media-verify-...` 검증 checkout에서 npm run check 통과: ESLint, TypeScript, 52개 단위/handler 검사, Prisma 스키마 검사. 이후 실제 챕터 렌더 검사 추가 후 전체 단위 검사 53개 통과. BUILD_COMMIT=admin-media-local 프로덕션 standalone 빌드 통과. 원본 checkout의 src/prisma 파일과 검증 빌드 입력이 동일함을 대조했다.
+- Python 배포 보호/복구 검사 5개와 스크립트 구문 검사를 통과했다. 새 배포 manifest는 첫 관리자 release를 기준으로 소스를 고정한다. 시험 DB migration·글 DB 검사·인증 미디어 HTTP 검사·운영 dump 복원 및 복원 DB migration이 성공해야 운영 migration/서비스 전환을 진행한다.
+- 제한 환경에서 새 빌드의 npm run test:smoke를 실행했으나 서버 시작이 차단됐다. 직접 standalone 실행으로 `listen EPERM 127.0.0.1:3101`을 확인했다. 이 버전의 실제 HTTP·DB·배포 통과를 주장하지 않는다. 이전 버전의 사용자 보고 PASS 68은 이번 변경의 HTTP 검증으로 재사용하지 않는다.
+- tests/integration/media-http.test.ts는 별도 *_test DB와 임시 미디어 디렉터리에서 인증된 업로드, 변조 Origin/CSRF, 초안 이미지 비공개, 아이콘 재사용, 실제 챕터 HTTP, VRChat 신규/기존 사진의 초안·교체·공개·중지, 로그아웃을 검사하도록 준비했다. 운영에서는 실제 GitHub 세션을 유지하며 시험 세션을 추가하지 않는다.
+- 원격 앱 커밋 `22c66a6a4b6569a8227bcb791373b861eb662204`에 변경 파일 52개를 기록하고 각 Git blob SHA를 대조했다. `deploy/media-source.json`은 해당 앱 커밋의 158개 입력 파일을 검증한다. 후속 manifest·문서 커밋과 실제 앱 BUILD_COMMIT을 구분한다.
+- 남은 확인: 서버 root 터미널에서 MEDIA.md의 배포 실행, 새 버전의 시험 DB/HTTP 검사 결과, 브라우저의 드래그·파일 선택·한글 편집과 저장/공개. 이 세션에서 운영 DB migration·웹 재시작·실제 사용자 사진 업로드는 수행하지 않았다.
+
+## 2026-10-19 — 운영 release 전환과 사용자 로그인 확인
+
+- 서버 파일 읽기로 `/opt/personal-site/web/current`가 `/opt/personal-site/web/releases/9378c630d1a6049bdc38c64e91ada63d796b46a5-admin-20261019T134814443732Z`를 가리키는 것을 확인했다. 관리자 앱의 실제 배포 버전은 `9378c630`이며 후속 배포 도구·문서 커밋과 구분한다.
+- 사용자가 “로그인 완료”를 보고했다. 실제 관리자 로그인 성공의 사용자 확인으로 기록한다. 브라우저 DOM이나 작성 요청 응답을 직접 관찰한 결과는 아니다.
+- 운영 release 전환과 로그인 성공을 확인했지만, 전체 배포 출력·운영 백업 파일·live health 응답은 이번 확인에서 직접 조회하지 않았다. 배포 도구의 절차가 있다는 사실을 각 운영 검사를 직접 수행한 증거로 대체하지 않는다.
+- 남은 확인은 브라우저에서 초안 저장 후 다시 열기, 발행 후 공개 글 표시, 수정 초안과 공개본 분리, 공개 중지, 로그아웃과 이전 세션 거절이다. 다른 GitHub 계정 거절 등 운영 인증의 나머지 항목도 별도 확인 대상이다.
+- 이번 변경은 검증 기록과 운영 안내 문서만 갱신했다. 앱 코드·DB·서비스를 변경하지 않았다. 첫 전환용 `deploy-host-admin.py --apply`는 이미 바뀐 운영 release에 재실행하지 않는다.
+
+## 2026-10-19 22:30~22:35 KST — 사용자 서버 검증 통과와 배포 준비
+
+- 사용자가 prepare-host-database.py 완료 메시지를 전달했다. 서버에 PostgreSQL과 운영/시험 DB 준비 단계가 완료됐다는 운영자 실행 결과다. Codex 실행 환경의 서비스·소켓 제한은 유지된다.
+- 사용자가 안내된 시험 DB migration + 통합 검사 명령의 결과를 전달했다: tests 1, pass 1, fail 0, duration 487.690813ms. 초안 분리·발행·수정 충돌·중복 주소 롤백·공개 중지·재발행이 실제 시험 DB에서 검증됐다. 개별 migration 출력은 별도로 전달받지 않았으므로 위 결과를 근거로 기록한다.
+- 사용자가 실제 서버의 HTTP smoke 결과를 전달했다: PASS 68 HTTP checks. 기존 페이지, 검색/태그, 메타데이터/사이트맵, 미지원 경로 404, 비로그인 작성 API 거절이 통과했다. 앞선 제한 환경의 HTTP 실패 기록을 이 운영자 실행 결과로 보완한다.
+- scripts/deploy-host-admin.py와 deploy/admin-source.json 추가. 앱 커밋 9378c630d1a6049bdc38c64e91ada63d796b46a5의 빌드 입력·공개 자산·migration·검사·Nginx 파일 118개의 Git blob SHA를 로컬 파일과 대조했다. 새 배포 도구/문서는 후속 커밋으로 보존하며 앱의 BUILD_COMMIT은 검증한 9378c630으로 고정한다. 합성 로컬 Git HEAD를 배포 버전으로 사용하지 않는다.
+- 배포 스크립트는 exact-source 빌드와 HTTP/시험 DB 검사를 다시 실행하고 운영 DB 백업을 별도 DB에 복원한다. 운영 migration 후 후보 서버를 확인하고 Nginx 검사, 환경 파일 연결, release symlink 전환, systemd 재시작, 내부/TLS Nginx health 확인을 수행하도록 작성했다. 전환 후 실패하면 이전 release와 웹 설정을 복구하고 DB는 유지한다. 이 배포 절차 자체는 아직 실제 서버에서 실행하지 않았다.
+- 이번 배포 도구 추가 후 npm run check(47개 검사/ESLint/TypeScript/Prisma)와 BUILD_COMMIT=9378c630d1a6049bdc38c64e91ada63d796b46a5 빌드를 다시 통과했다. 제한 실행 환경의 HTTP 재시도는 서버 시작 권한 오류로 중단됐다. 배포 도구는 새 커밋 표시로 빌드한 산출물에 대해 서버 터미널에서 HTTP 검사를 다시 통과시킨 뒤 운영 변경을 시작한다.
+- Python 검사 5개 통과(기존 DB 준비 보호 2개 + release 복구 3개). 실제 파일/링크 복구, 운영자가 중간에 바꾼 설정 보존, 일반 디렉터리의 링크 교체 거절을 확인했다. 실제 systemd/Nginx 실행의 검증을 대체하지 않는다.
+- 아직 남은 검증: 운영 배포 스크립트 실행 결과, 외부 브라우저의 GitHub 로그인, 다른 계정 거절, 세션/CSRF/로그아웃, 편집·발행·공개 중지 흐름. HTTP smoke가 인증된 작성 흐름을 검증한 것으로 해석하지 않는다.
+
+## 2026-10-19 — 서버 DB 준비 절차 추가
+
+- 사용자 터미널 결과: undery-web active, 실행 중인 Docker 컨테이너 없음, TCP 5432 리스너 없음. 사용자가 OAuth 환경 파일 저장 완료를 알렸다. 비밀값은 읽거나 대화에 출력하지 않았다.
+- scripts/prepare-host-database.py 추가: 기존 대상 볼륨/컨테이너/자격증명/설정된 DATABASE_URL이 있으면 중단한다. 신규 구성에서만 PostgreSQL을 loopback 포트로 시작하고 bootstrap postgres와 별도 non-superuser 앱 계정을 만든다. 운영/시험 DB를 분리하며 OAuth 환경 파일을 비공개 백업 후 DB URL만 갱신한다. 웹 서비스 재시작과 migration은 수행하지 않는다.
+- Python 단위 검사 2개 통과: 기존/중복 DATABASE_URL 거절, 자격증명 파일의 0600과 덮어쓰기 거절. 스크립트 구문/--help 확인. 실제 Docker provisioning 실행을 검증한 것은 아니다.
+- 기존 npm run check 재실행 통과: 47개 검사, ESLint/TypeScript/Prisma. BUILD_COMMIT=admin-database-setup-local 프로덕션 빌드 통과. HTTP smoke는 현재 실행 정책의 서버 실행 제한으로 여전히 미통과다.
+- systemctl 읽기 재시도도 Operation not permitted로 거절됐다. 서버 DB 준비 스크립트의 실제 실행과 출력 확인은 사용자 터미널에서 필요하다.
+
+## 2026-10-19 — 관리자 GitHub 로그인과 Coding 초안·발행
+
+- 기준: 원격 `feature/web`와 `codex/coding-design`의 `edddc7521c979ee78ea23ab2cddcdfeed43ce532`. `main`에는 앱이 없어 작업 기준으로 사용하지 않았다. 로컬은 GitHub 파일을 읽어 구성한 snapshot이므로 검증용 로컬 Git 이력을 upstream 이력으로 취급하지 않는다. 원격 변경은 원본 commit/tree를 부모·기반으로 연결한다.
+- Node 24.20.0, npm 11.19.0, Next.js 16.3.6, Prisma 6.19.3. 네트워크 패키지 조회가 차단되어 기존 npm 캐시에서 잠금 파일의 의존성을 설치했다. 새 의존성은 추가하지 않았다. Prisma 캐시 경로만 쓰기 가능한 임시 위치로 지정해 client 생성을 완료했다.
+- 최종 `XDG_CACHE_HOME=/tmp/introduce-page-prisma-cache npm run check` 통과: ESLint, Next route type 생성, TypeScript, **실제 단위/직접 handler 검사 47개**, Prisma schema validation. 기존 35개와 관리자 관련 12개다. 인증 미설정 시 닫힘, 실제 숫자 ID, PKCE/state 구성, Origin, 모의 GitHub 교환 후 ID 확인, 직접 작성 handler 거절, JSON 바이트 제한, 입력 규칙, 안전한 Markdown 출력을 포함한다. 실제 GitHub 인증 검사는 아니다.
+- `tsx --test` CLI는 제한 환경에서 IPC 소켓 생성이 거절됐다. Node 24의 `--import tsx --test --test-isolation=none`으로 실제 47개 test case 실행을 확인하고 npm 스크립트에 적용했다. 단순 파일 개수만 출력된 실행을 47개 통과 근거로 사용하지 않았다.
+- 최종 `BUILD_COMMIT=admin-posts-local XDG_CACHE_HOME=/tmp/introduce-page-prisma-cache npm run build` 통과. TypeScript CLI subprocess가 제한 환경에서 실패해 Next의 TypeScript 5 in-process 검사와 worker threads를 사용한다. 관리자 및 API의 동적 route와 standalone 산출물을 생성했다. typecheck를 끄거나 오류를 무시하지 않았다.
+- **HTTP smoke 미통과/환경 차단:** `npm run test:smoke`를 실행했으나 standalone 프로세스 시작에 실패했다. 직접 같은 서버를 실행하여 `listen EPERM: operation not permitted 127.0.0.1:3101`을 확인했다. HTTP 응답, 관리자 실제 화면·모바일·IME 상호작용을 이번 세션에서 검증했다고 주장하지 않는다. 기존 2026-10-06 HTTP 성공 기록은 이번 변경의 검증 근거가 아니다.
+- 실제 PostgreSQL migration/저장·발행 검사는 아직 실행하지 않았다. 별도 `_test` DB에서 실행할 `npm run test:admin:db`를 추가했다. 초안 격리, 공개본 유지, 버전 충돌, 중복 slug 롤백, 공개 중지·재발행 검사를 준비했으며 테스트 코드 존재를 실행 성공으로 간주하지 않는다.
+- 서버 파일 읽기에서 기존 standalone release 경로와 systemd/Nginx 설정을 확인했다. systemd 버스 및 Docker socket 접근은 거절됐다. `/etc`·`/opt` 쓰기, 서비스 교체·재시작, 운영 DB 변경, OAuth App 등록은 수행하지 않았다. 실제 비밀값을 읽거나 저장소에 기록하지 않았다.
+- 보완: CI의 앱 없는 main checkout을 feature/web으로 변경한 설정안, Prisma 생성이 가능한 Docker 빌드 순서, DB 연결 health, Nginx 인증 요청 제한·callback 접근 로그 제외·관리자 본문 크기 제한, systemd 환경 파일 drop-in과 호스트 DB용 loopback override를 준비했다. Jenkins 작업이나 Nginx 운영 설정에 적용한 것은 아니다.
+- 다음 필수 검증은 ADMIN.md의 DB migration/통합 검사, GitHub 실제 로그인과 다른 계정 거절·세션/CSRF·로그아웃, 브라우저 편집부터 공개 중지까지의 흐름, 기존 HTTP 회귀 검사다. 이 확인 전에는 초안 PR을 배포 완료로 취급하지 않는다.
+
 ## 2026-10-06 — Coding 한글 입력·다중 태그·이동 경로 보완
 
 - 검색창의 제어값을 URL 대신 동기적인 로컬 입력 상태로 관리한다. IME 조합 중에는 주소 쓰기를 보류하고 조합 완료 시 반영하며, 지연된 자기 URL 갱신은 최신 입력을 덮어쓰지 않는다. 외부 이동과 뒤로 가기는 주소의 검색어를 복원한다.
